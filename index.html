@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <!-- iOS 添加到主屏幕配置 -->
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Romeo">
 <!-- 自定义图标：PNG 格式确保 iOS 识别 -->
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -48,23 +48,20 @@
   .ic{ display:inline-block; background:#1a1816;}
   .ic-sig{ width:16px; height:11px; -webkit-mask:radial-gradient(circle,#000 50%,transparent 50%) 0 0/3px 3px; mask:radial-gradient(circle,#000 50%,transparent 50%) 0 0/3px 3px;}
   .ic-wifi{ width:14px; height:10px; border:2px solid #1a1816; border-bottom:none; border-radius:3px 3px 0 0; background:none;}
-  .status-bar{ display:flex; align-items:center; gap:8px; padding-top:14px; padding-bottom:6px; font-size:15px; font-weight:600; color:#1a1816;}
+  .status-bar{ display:flex; align-items:center; justify-content:space-between; padding-top:14px; padding-bottom:6px; font-size:15px; font-weight:600; color:#1a1816;}
+  .status-bar .left-spacer{ flex:1;}
+  .status-bar .right{ display:flex; gap:6px; align-items:center;}
   .status-bar #batteryIcon{ width:24px; height:11px; border:1.5px solid #1a1816; border-radius:3px; position:relative; background:none;}
   .status-bar #batteryIcon::after{ content:""; position:absolute; right:-3px; top:3px; width:2px; height:5px; background:#1a1816; border-radius:0 1px 1px 0;}
   .status-bar #batteryIcon .fill{ position:absolute; left:1px; top:1px; bottom:1px; width:60%; background:currentColor; border-radius:1px;}
   .status-bar #batteryIcon.low .fill{ color:#E26A6A;}
   .status-bar #batteryIcon.normal .fill{ color:#1a1816;}
   .status-bar #batteryIcon.charging .fill{ color:#88B97A;}
-  .top-bar{ display:flex; align-items:center; justify-content:space-between; padding:6px 22px 12px;}
-  .top-bar .home{ font-size:22px; color:#2C2823;}
+  .top-bar{ display:flex; align-items:center; justify-content:center; padding:6px 22px 12px;}
   .top-bar .title{ font-size:17px; font-weight:600; color:#1f1d1a; cursor:pointer; padding:2px 8px; border-radius:8px; transition:background .2s; outline:none;}
   .top-bar .title:hover{ background:rgba(255,255,255,.4);}
   .top-bar .title:focus{ background:rgba(255,255,255,.6);}
   .top-bar .title::after{ content:" ✎"; font-size:11px; color:var(--soft); font-weight:400;}
-  .top-bar .actions{ display:flex; gap:14px; align-items:center;}
-  .top-bar .more{ font-size:18px; letter-spacing:1px; color:#2C2823; font-weight:700;}
-  .top-bar .rec{ width:20px; height:20px; border:2px solid #2C2823; border-radius:50%; position:relative;}
-  .top-bar .rec::after{ content:""; position:absolute; inset:4px; background:#2C2823; border-radius:50%;}
   .main{ flex:1; display:flex; overflow:hidden; min-height:0;}
 
   /* ===== 左导航 ===== */
@@ -427,7 +424,7 @@
 <body>
 <div class="phone">
   <div class="status-bar">
-    <div>WorkBuddy</div>
+    <div class="left-spacer"></div>
     <div class="right">
       <span class="ic ic-sig"></span>
       <span class="ic-wifi"></span>
@@ -435,12 +432,7 @@
     </div>
   </div>
   <div class="top-bar">
-    <div class="home">⌂</div>
     <div class="title" contenteditable="true" id="workbenchTitle" data-default="我的工作台">我的工作台</div>
-    <div class="actions">
-      <span class="more">⋯</span>
-      <span class="rec"></span>
-    </div>
   </div>
   <div class="main">
     <aside class="sidebar" id="sidebar">
