@@ -189,8 +189,8 @@
 
   .news-card{ background:linear-gradient(135deg,#E6DCF0,#F0E6F8); border-radius:16px; padding:12px 14px; margin-bottom:12px;}
   .news-card .nh{ display:flex; align-items:center; gap:6px; font-size:13px; font-weight:700; color:#6a4a8a; margin-bottom:8px;}
-  .news-item{ display:flex; gap:8px; padding:6px 0; border-bottom:1px dashed rgba(165,132,204,.3); cursor:pointer; transition:background .15s;}
-  .news-item:hover{ background:rgba(255,255,255,.3);}
+  .news-item{ display:flex; gap:8px; padding:6px 0; border-bottom:1px dashed rgba(165,132,204,.3); cursor:pointer; transition:background .15s; text-decoration:none; color:inherit;}
+  a.news-item:hover{ background:rgba(255,255,255,.3);}
   .news-item:last-child{ border-bottom:none;}
   .news-item .tag{ font-size:9px; background:#fff; color:var(--purple-d); padding:2px 6px; border-radius:6px; flex-shrink:0; height:fit-content; font-weight:600;}
   .news-item .ntext{ font-size:11px; color:#5a4470; line-height:1.4; flex:1;}
@@ -329,18 +329,22 @@
 
   .home-indicator{ height:max(20px, env(safe-area-inset-bottom)); display:flex; align-items:center; justify-content:center; padding-bottom:env(safe-area-inset-bottom);}
 
-  /* 云同步按钮 */
-  .sync-btn{
+  /* 云同步按钮组 */
+  .sync-group{
     position:fixed; bottom:max(20px, env(safe-area-inset-bottom)); right:16px;
+    display:flex; flex-direction:column; gap:10px; z-index:50;
+  }
+  .sync-btn{
     width:44px; height:44px; border-radius:50%;
-    background:linear-gradient(135deg,#6E9BD1,#88B97A);
-    border:none; color:#fff; font-size:18px; cursor:pointer;
-    box-shadow:0 4px 14px rgba(110,155,209,.4);
-    z-index:50; display:flex; align-items:center; justify-content:center;
+    border:none; color:#fff; font-size:20px; cursor:pointer; font-weight:700;
+    box-shadow:0 4px 14px rgba(0,0,0,.18);
+    display:flex; align-items:center; justify-content:center;
     transition:transform .2s;
   }
   .sync-btn:active{ transform:scale(.9);}
   .sync-btn.syncing{ animation:syncSpin 1s linear infinite;}
+  .sync-pull{ background:linear-gradient(135deg,#88B97A,#6FA86A);} /* 绿色=拉取恢复 */
+  .sync-push{ background:linear-gradient(135deg,#6E9BD1,#5A87C2);} /* 蓝色=推送备份 */
   @keyframes syncSpin{ from{transform:rotate(0);} to{transform:rotate(360deg);}}
   .sync-toast{
     position:fixed; bottom:80px; right:16px;
@@ -577,8 +581,11 @@
   </div>
   <div class="home-indicator"></div>
 </div>
-<!-- 云同步按钮 -->
-<button class="sync-btn" id="syncBtn" onclick="syncToCloud()" title="同步到云端">☁</button>
+<!-- 云同步按钮组：↓拉取（恢复） / ↑推送（备份） -->
+<div class="sync-group">
+  <button class="sync-btn sync-pull" id="syncPullBtn" onclick="pullFromCloudManual()" title="从云端恢复数据">↓</button>
+  <button class="sync-btn sync-push" id="syncBtn" onclick="syncToCloud()" title="备份到云端">↑</button>
+</div>
 <div class="sync-toast" id="syncToast"></div>
 
 <!-- 鼓励弹窗 -->
@@ -1499,11 +1506,11 @@ function renderNews(items, sourceName){
   const list = document.getElementById('newsList');
   const source = document.getElementById('newsSource');
   list.innerHTML = items.map(item=>`
-    <div class="news-item" onclick="window.open('${item.url}','_blank')">
+    <a class="news-item" href="${item.url}" target="_blank" rel="noopener">
       <span class="tag">${item.tag}</span>
       <span class="ntext">${item.title}</span>
       <span class="arrow">›</span>
-    </div>
+    </a>
   `).join('');
   source.textContent = '数据源：' + sourceName + ' · 点击查看详情 · 每小时自动刷新';
 }
@@ -1584,16 +1591,10 @@ async function syncToCloud(){
 }
 
 async function pullFromCloud(){
-  let token = localStorage.getItem('pcw_gh_token');
-  if(!token){
-    token = prompt('首次使用，请输入GitHub Token\n（在 github.com/settings/tokens 生成，勾选repo权限）:');
-    if(!token) return false;
-    localStorage.setItem('pcw_gh_token', token);
-  }
-
+  // 公开仓库读取不需要 token，避免 PWA 首次打开弹 prompt
   try{
-    const resp = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${GITHUB_FILE}`, {
-      headers: {'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json'}
+    const resp = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${GITHUB_FILE}?t=${Date.now()}`, {
+      headers: {'Accept': 'application/vnd.github.v3+json'}
     });
     if(!resp.ok) return false;
     const fileData = await resp.json();
@@ -1610,16 +1611,16 @@ async function pullFromCloud(){
     if(data.lastCoinEarned) lastCoinEarned = data.lastCoinEarned;
     if(data.title){
       localStorage.setItem('pcw_title', data.title);
-      document.getElementById('workbenchTitle').textContent = data.title;
+      const tEl = document.getElementById('workbenchTitle');
+      if(tEl) tEl.textContent = data.title;
       document.title = data.title;
     }
-    if(data.quote) document.getElementById('quoteText').textContent = data.quote;
-    if(data.memo) document.querySelector('.memo-text').innerHTML = data.memo;
+    if(data.quote){ const qEl = document.getElementById('quoteText'); if(qEl) qEl.textContent = data.quote; }
+    if(data.memo){ const mEl = document.querySelector('.memo-text'); if(mEl) mEl.innerHTML = data.memo; }
 
     save();
     renderNav();
     renderAll();
-    showToast('✅ 已从云端恢复数据');
     return true;
   }catch(e){
     console.log('Pull failed:', e);
@@ -1644,11 +1645,23 @@ function autoSync(){
   }, 3000);
 }
 
-// 页面加载时自动拉取云端数据
+// 页面加载时自动拉取云端数据（静默）
 async function initCloudSync(){
   const pulled = await pullFromCloud();
   if(pulled){
     console.log('Cloud data restored');
+    showToast('✅ 已从云端恢复数据');
+  }
+}
+
+// 手动拉取（按钮触发，带提示）
+async function pullFromCloudManual(){
+  showToast('正在从云端拉取...');
+  const pulled = await pullFromCloud();
+  if(pulled){
+    showToast('✅ 已从云端恢复数据');
+  }else{
+    showToast('❌ 云端暂无数据或拉取失败');
   }
 }
 
