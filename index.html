@@ -1,0 +1,1389 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<!-- iOS 添加到主屏幕配置 -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Romeo">
+<!-- 自定义图标：PNG 格式确保 iOS 识别 -->
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Romeo</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body{
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:#F2EAD8; min-height:100vh; min-height:100dvh;
+    width:100%; color:#3A3530;
+    -webkit-tap-highlight-color:transparent;
+    -webkit-touch-callout:none;
+    overscroll-behavior:none;
+  }
+  :root{
+    --bg-app:#F2EAD8; --bg-soft:#ECE2CC; --card:#FFFCF5;
+    --text:#3A3530; --sub:#8C8478; --soft:#B5AC9B; --line:#E3D9C2;
+    --pink:#FFD9D9; --pink-d:#F5A8A8;
+    --green:#D6EFCB; --green-d:#88B97A;
+    --blue:#D4E4F5; --blue-d:#6E9BD1;
+    --yellow:#FBEAB4; --yellow-d:#C9A647;
+    --purple:#E6DCF0; --purple-d:#A584CC;
+    --orange:#FCE0C7; --orange-d:#E89B4E;
+    --red:#E26A6A; --nav-active:#6E9BD1;
+    --gold:#E8B530; --gold-l:#F5D980;
+  }
+  .phone{
+    width:100%; max-width:100%; height:100vh; height:100dvh;
+    background:var(--bg-app); border-radius:0;
+    overflow:hidden; display:flex; flex-direction:column; position:relative;
+  }
+  .status-bar{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:14px 28px 4px; font-size:16px; font-weight:600; color:#1a1816;
+    padding-top:max(14px, env(safe-area-inset-top));
+    padding-left:max(28px, env(safe-area-inset-left));
+    padding-right:max(28px, env(safe-area-inset-right));
+  }
+  .status-bar .right{ display:flex; gap:6px; align-items:center;}
+  .ic{ display:inline-block; background:#1a1816;}
+  .ic-sig{ width:16px; height:11px; -webkit-mask:radial-gradient(circle,#000 50%,transparent 50%) 0 0/3px 3px; mask:radial-gradient(circle,#000 50%,transparent 50%) 0 0/3px 3px;}
+  .ic-wifi{ width:14px; height:10px; border:2px solid #1a1816; border-bottom:none; border-radius:3px 3px 0 0; background:none;}
+  .ic-bat{ width:24px; height:11px; border:1.5px solid #1a1816; border-radius:3px; position:relative; background:none;}
+  .ic-bat::after{ content:""; position:absolute; right:-3px; top:3px; width:2px; height:5px; background:#1a1816; border-radius:0 1px 1px 0;}
+  .ic-bat .fill{ position:absolute; left:1px; top:1px; bottom:1px; width:60%; background:#E26A6A; border-radius:1px;}
+  .top-bar{ display:flex; align-items:center; justify-content:space-between; padding:6px 22px 12px;}
+  .top-bar .home{ font-size:22px; color:#2C2823;}
+  .top-bar .title{ font-size:17px; font-weight:600; color:#1f1d1a; cursor:pointer; padding:2px 8px; border-radius:8px; transition:background .2s; outline:none;}
+  .top-bar .title:hover{ background:rgba(255,255,255,.4);}
+  .top-bar .title:focus{ background:rgba(255,255,255,.6);}
+  .top-bar .title::after{ content:" ✎"; font-size:11px; color:var(--soft); font-weight:400;}
+  .top-bar .actions{ display:flex; gap:14px; align-items:center;}
+  .top-bar .more{ font-size:18px; letter-spacing:1px; color:#2C2823; font-weight:700;}
+  .top-bar .rec{ width:20px; height:20px; border:2px solid #2C2823; border-radius:50%; position:relative;}
+  .top-bar .rec::after{ content:""; position:absolute; inset:4px; background:#2C2823; border-radius:50%;}
+  .main{ flex:1; display:flex; overflow:hidden; min-height:0;}
+
+  /* ===== 左导航 ===== */
+  .sidebar{
+    width:120px; background:var(--bg-soft);
+    padding:8px 0 max(6px, env(safe-area-inset-bottom)); display:flex; flex-direction:column; gap:1px;
+    border-radius:0; flex-shrink:0; overflow-y:auto; position:relative;
+  }
+  .sidebar::-webkit-scrollbar{ display:none;}
+  .time-label{ text-align:center; font-size:11px; color:var(--sub); margin:2px 0 6px; font-weight:500;}
+  .nav-item{
+    display:flex; flex-direction:column; align-items:center; gap:1px;
+    padding:7px 6px; font-size:11px; color:var(--sub); cursor:pointer;
+    position:relative; transition:all .2s; text-align:center;
+  }
+  .nav-item .emoji{ font-size:18px; filter:saturate(.85);}
+  .nav-item:hover{ color:var(--text);}
+  .nav-item:hover .nav-edit-btns{ opacity:1;}
+  .nav-item.active{
+    background:linear-gradient(135deg,#6E9BD1,#88B97A); color:#fff;
+    border-radius:0 18px 18px 0; margin-right:-8px; padding-right:14px;
+    font-weight:600;
+    box-shadow:0 2px 8px rgba(110,155,209,.3);
+  }
+  .nav-item.active .emoji{ filter:none;}
+  .nav-item .mini-bar{ width:32px; height:3px; background:rgba(140,132,120,.25); border-radius:2px; margin-top:2px; overflow:hidden;}
+  .nav-item .mini-bar i{ display:block; height:100%; border-radius:2px; transition:width .4s;}
+  .nav-item.active .mini-bar{ background:rgba(255,255,255,.2);}
+  .nav-edit-btns{
+    position:absolute; top:2px; right:2px; display:flex; gap:1px;
+    opacity:0; transition:opacity .2s; z-index:5;
+  }
+  .nav-edit-btns button{
+    width:16px; height:16px; border:none; border-radius:50%;
+    font-size:9px; cursor:pointer; line-height:16px; padding:0;
+    color:#fff;
+  }
+  .nav-edit-btns .ne-edit{ background:var(--blue-d);}
+  .nav-edit-btns .ne-del{ background:var(--red);}
+  .nav-item.active .nav-edit-btns{ opacity:1;}
+  .nav-add{
+    margin:4px 12px; padding:6px; border:1.5px dashed #C9C0AC;
+    border-radius:10px; text-align:center; font-size:10px; color:var(--sub);
+    cursor:pointer; transition:all .2s;
+  }
+  .nav-add:hover{ border-color:var(--green-d); color:var(--green-d); background:rgba(136,185,122,.08);}
+  .nav-add::before{ content:"+ ";}
+
+  /* ===== 右侧主区 ===== */
+  .content{ flex:1; padding:12px 16px 14px; overflow-y:auto; scrollbar-width:none;}
+  .content::-webkit-scrollbar{ display:none;}
+  .date-block{ display:flex; align-items:baseline; gap:8px; margin-bottom:12px;}
+  .date-block .day{ font-size:24px; font-weight:800; color:#1f1d1a;}
+  .date-block .sub{ font-size:11px; color:var(--sub);}
+  .quote-card{ background:var(--pink); border-radius:16px; padding:12px 14px; margin-bottom:12px; color:#5a3a3a; position:relative;}
+  .quote-card .qt{ font-size:13px; font-weight:700; display:flex; align-items:center; gap:6px; margin-bottom:4px;}
+  .quote-card .qt::before{ content:""; width:8px; height:8px; background:#E26A6A; border-radius:2px;}
+  .quote-card .qt .refresh{ margin-left:auto; font-size:11px; font-weight:600; color:#c98f8f; cursor:pointer; opacity:.7;}
+  .quote-card .qtext{ font-size:12.5px; color:#7a5252; line-height:1.55; outline:none; min-height:18px;}
+  .quote-card .qtag{ font-size:10px; color:#c98f8f; margin-top:4px; font-weight:600;}
+
+  .stats{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:14px;}
+  .stat-card{ border-radius:16px; padding:12px 8px 10px; text-align:center;}
+  .stat-card .num{ font-size:22px; font-weight:800; line-height:1;}
+  .stat-card .num.g{ color:var(--green-d);} .stat-card .num.b{ color:var(--blue-d);} .stat-card .num.y{ color:var(--yellow-d);}
+  .stat-card .label{ font-size:10px; color:#5a5246; margin-top:4px;}
+  .stat-card.green{ background:var(--green);} .stat-card.blue{ background:var(--blue);} .stat-card.yellow{ background:var(--yellow);}
+  .stat-card .pbar{ height:5px; background:rgba(255,255,255,.5); border-radius:3px; margin-top:6px; overflow:hidden;}
+  .stat-card .pbar i{ display:block; height:100%; border-radius:3px; transition:width .5s;}
+  .stat-card.green .pbar i{ background:var(--green-d);} .stat-card.blue .pbar i{ background:var(--blue-d);} .stat-card.yellow .pbar i{ background:var(--yellow-d);}
+  .stat-card .pct{ font-size:9px; color:#5a5246; margin-top:2px; font-weight:600;}
+
+  .card{ background:var(--card); border-radius:16px; padding:12px 14px; margin-bottom:12px;}
+  .card-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;}
+  .card-head .left{ display:flex; align-items:center; gap:6px; font-size:13px; font-weight:700; color:#1f1d1a;}
+  .card-head .left .ico{ font-size:15px;}
+  .card-head .pct-big{ font-size:12px; font-weight:700;}
+  .btn{ font-size:11px; padding:4px 10px; border-radius:10px; font-weight:600; border:none; cursor:pointer;}
+  .btn-add{ background:#FFE3E3; color:#E26A6A;} .btn-add::before{ content:"+ ";}
+  .btn-edit{ background:#E2EEFB; color:#5687C0;} .btn-del{ background:#FCE0E0; color:#E26A6A;}
+  .pbar-big{ height:8px; background:#F0E6D0; border-radius:5px; overflow:hidden; margin:6px 0 4px;}
+  .pbar-big i{ display:block; height:100%; border-radius:5px; transition:width .6s ease;}
+
+  /* 校内学习折叠 */
+  .school-card{ background:var(--card); border-radius:16px; padding:12px 14px; margin-bottom:12px; border:1.5px solid #E3D9C2;}
+  .school-card .sch-head{ display:flex; align-items:center; justify-content:space-between; cursor:pointer;}
+  .school-card .sch-head .title-wrap{ display:flex; align-items:center; gap:8px;}
+  .school-card .sch-head .title-wrap .ico{ font-size:18px;}
+  .school-card .sch-head .title-wrap .name{ font-size:14px; font-weight:700; color:#1f1d1a;}
+  .school-card .sch-head .arrow{ font-size:12px; color:var(--sub); transition:transform .3s;}
+  .school-card.expanded .sch-head .arrow{ transform:rotate(90deg);}
+  .school-card .sch-summary{ display:flex; align-items:center; gap:10px; margin-top:8px;}
+  .school-card .sch-summary .pbar-big{ flex:1; margin:0;}
+  .school-card .sch-summary .pct-big{ font-size:13px; font-weight:800;}
+  .sch-body{ display:none; margin-top:12px;}
+  .school-card.expanded .sch-body{ display:block;}
+  .sub-subject{ border-radius:12px; padding:10px 12px; margin-bottom:10px;}
+  .sub-subject:last-child{ margin-bottom:0;}
+  .sub-subject.math{ background:#EDF3FB;} .sub-subject.chinese{ background:#FCEFE0;} .sub-subject.english{ background:#F0E8F8;}
+  .ss-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;}
+  .ss-head .left{ display:flex; align-items:center; gap:6px; font-size:12.5px; font-weight:700;}
+  .ss-head .left .dot{ width:8px; height:8px; border-radius:2px;}
+  .sub-subject.math .dot{ background:var(--blue-d);} .sub-subject.chinese .dot{ background:var(--orange-d);} .sub-subject.english .dot{ background:var(--purple-d);}
+  .ss-head .pct{ font-size:11px; font-weight:700;}
+  .sub-subject.math .pct{ color:var(--blue-d);} .sub-subject.chinese .pct{ color:var(--orange-d);} .sub-subject.english .pct{ color:var(--purple-d);}
+  .ss-bar{ height:6px; background:rgba(255,255,255,.6); border-radius:4px; overflow:hidden; margin-bottom:6px;}
+  .ss-bar i{ display:block; height:100%; border-radius:4px; transition:width .5s;}
+  .sub-subject.math .ss-bar i{ background:var(--blue-d);} .sub-subject.chinese .ss-bar i{ background:var(--orange-d);} .sub-subject.english .ss-bar i{ background:var(--purple-d);}
+
+  /* 待办条目 */
+  .task{ display:flex; align-items:flex-start; gap:8px; padding:9px 0; border-bottom:1px dashed var(--line); cursor:grab;}
+  .task:active{ cursor:grabbing;}
+  .task.dragging{ opacity:.4;}
+  .task:last-child{ border-bottom:none; padding-bottom:0;}
+  .task .drag-handle{ width:12px; color:var(--soft); font-size:12px; cursor:grab; flex-shrink:0; margin-top:2px; opacity:.5;}
+  .task .check{ width:18px; height:18px; border:1.5px solid #C9C0AC; border-radius:50%; flex-shrink:0; margin-top:1px; cursor:pointer; position:relative;}
+  .task.done .check{ background:var(--green-d); border-color:var(--green-d);}
+  .task.done .check::after{ content:"✓"; color:#fff; font-size:11px; font-weight:700; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);}
+  .task .body{ flex:1; min-width:0;}
+  .task .name{ font-size:12.5px; color:#2C2823; font-weight:500; line-height:1.4;}
+  .task.done .name{ text-decoration:line-through; color:#B5AC9B;}
+  .task .meta{ display:flex; align-items:center; gap:6px; margin-top:5px; flex-wrap:wrap;}
+  .task .time{ font-size:10px; color:#8C8478; background:#F4ECD8; padding:2px 7px; border-radius:8px;}
+  .task .tbar{ flex:1; min-width:50px; height:4px; background:#F0E6D0; border-radius:3px; overflow:hidden;}
+  .task .tbar i{ display:block; height:100%; border-radius:3px; transition:width .4s;}
+  .task .tpct{ font-size:9px; color:var(--sub); font-weight:600; min-width:24px;}
+  .task .tag{ font-size:9px; padding:1px 6px; border-radius:6px; font-weight:600;}
+  .task .acts{ display:flex; gap:4px; flex-shrink:0;}
+  .task .acts .btn{ font-size:10px; padding:3px 7px;}
+  .task .file-tag{ font-size:9px; color:var(--blue-d); background:#E2EEFB; padding:1px 5px; border-radius:4px; cursor:pointer;}
+
+  .rope-card{ background:linear-gradient(135deg,#FFF4E0,#FBEAB4); border-radius:16px; padding:14px; margin-bottom:12px;}
+  .rope-card .rh{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;}
+  .rope-card .rh .t{ display:flex; align-items:center; gap:6px; font-size:13px; font-weight:700; color:#1f1d1a;}
+  .rope-card .rh .goal{ font-size:11px; color:#C9A647; font-weight:600;}
+  .rope-card .rcount{ font-size:28px; font-weight:800; color:var(--orange-d); text-align:center; line-height:1;}
+  .rope-card .rcount small{ font-size:12px; color:#C9A647; font-weight:600;}
+  .rope-card .rbar{ height:10px; background:rgba(255,255,255,.6); border-radius:6px; overflow:hidden; margin:8px 0 6px;}
+  .rope-card .rbar i{ display:block; height:100%; background:linear-gradient(90deg,#F5B26B,#E89B4E); border-radius:6px; transition:width .5s;}
+  .rope-card .ract{ display:flex; justify-content:center; gap:8px; margin-top:8px;}
+  .rope-card .ract .btn-do{ background:#E89B4E; color:#fff; padding:6px 18px; font-size:12px; border-radius:14px; font-weight:600; border:none; cursor:pointer;}
+
+  .news-card{ background:linear-gradient(135deg,#E6DCF0,#F0E6F8); border-radius:16px; padding:12px 14px; margin-bottom:12px;}
+  .news-card .nh{ display:flex; align-items:center; gap:6px; font-size:13px; font-weight:700; color:#6a4a8a; margin-bottom:8px;}
+  .news-item{ display:flex; gap:8px; padding:6px 0; border-bottom:1px dashed rgba(165,132,204,.3);}
+  .news-item:last-child{ border-bottom:none;}
+  .news-item .tag{ font-size:9px; background:#fff; color:var(--purple-d); padding:2px 6px; border-radius:6px; flex-shrink:0; height:fit-content; font-weight:600;}
+  .news-item .ntext{ font-size:11px; color:#5a4470; line-height:1.4;}
+  .memo-card .memo-text{ font-size:12px; color:#5a5246; line-height:1.6; outline:none; min-height:40px; padding:6px; background:#FFFCF5; border-radius:8px; border:1px dashed var(--line);}
+
+  /* ===== 抓娃娃机 ===== */
+  .claw-card{ background:linear-gradient(180deg,#FFF8EC,#FFEFD8); border-radius:20px; padding:16px; margin-bottom:8px; border:2px solid #F0D9B0; position:relative;}
+  .claw-card .ch{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;}
+  .claw-card .ch .t{ display:flex; align-items:center; gap:6px; font-size:14px; font-weight:800; color:#5a4220;}
+  .claw-card .ch .coin-display{ display:flex; align-items:center; gap:4px; font-size:12px; font-weight:700; background:rgba(232,181,48,.15); padding:4px 10px; border-radius:12px; color:var(--gold); cursor:pointer;}
+  .cycle-switch{ display:flex; gap:0; margin-bottom:8px; background:rgba(240,230,208,.6); border-radius:10px; padding:3px;}
+  .cycle-switch button{ flex:1; border:none; background:transparent; padding:5px 0; font-size:11px; color:var(--sub); border-radius:8px; cursor:pointer; font-weight:600; transition:all .2s;}
+  .cycle-switch button.active{ background:#fff; color:var(--text); box-shadow:0 1px 4px rgba(0,0,0,.08);}
+  .cycle-info{ font-size:10.5px; color:var(--sub); margin-bottom:10px; text-align:center; line-height:1.4;}
+  .cycle-info .reward-edit{ color:var(--blue-d); cursor:pointer; text-decoration:underline; font-weight:600;}
+
+  .machine{ position:relative; height:200px; background:linear-gradient(180deg,#FFF6E8,#FFE9D0); border-radius:14px; overflow:hidden; border:2px solid #E8C896; margin-bottom:10px;}
+  .machine .top-bar-m{ position:absolute; top:0; left:0; right:0; height:16px; background:linear-gradient(90deg,#F5C98A,#E8B56E);}
+  .machine .top-bar-m::before, .machine .top-bar-m::after{ content:""; position:absolute; top:5px; width:6px; height:6px; background:#C97F3E; border-radius:50%;}
+  .machine .top-bar-m::before{ left:14px;} .machine .top-bar-m::after{ right:14px;}
+  .rail{ position:absolute; top:18px; left:0; right:0; height:2px; background:#E8D5B0;}
+  .claw-arm{ position:absolute; top:20px; left:50%; transform:translateX(-50%); width:4px; height:30px; background:#999; transition:left .2s ease-out, height .5s ease;}
+  .claw-arm .claw{ position:absolute; bottom:-2px; left:50%; transform:translateX(-50%); width:24px; height:18px;}
+  .claw-arm .claw::before, .claw-arm .claw::after{ content:""; position:absolute; top:0; width:3px; height:16px; background:#888; border-radius:2px; transition:transform .3s;}
+  .claw-arm .claw::before{ left:4px; transform:rotate(15deg);} .claw-arm .claw::after{ right:4px; transform:rotate(-15deg);}
+  .claw-arm.dropping{ height:110px; transition:height .6s ease;}
+  .claw-arm.dropping .claw::before{ transform:rotate(30deg);} .claw-arm.dropping .claw::after{ transform:rotate(-30deg);}
+  .claw-arm.swinging{ animation:clawSwing 1.5s ease-in-out infinite;}
+  @keyframes clawSwing{
+    0%{ left:20%;} 25%{ left:80%;} 50%{ left:15%;} 75%{ left:85%;} 100%{ left:20%;}
+  }
+  .ball-pool{ position:absolute; bottom:0; left:0; right:0; height:85px; overflow:hidden; transition:transform .1s ease-out;}
+  .ball-pool.shaking{ animation:poolShake .15s ease-in-out infinite;}
+  @keyframes poolShake{ 0%,100%{ transform:translateX(0);} 25%{ transform:translateX(-3px);} 75%{ transform:translateX(3px);}}
+  .ball{ position:absolute; width:28px; height:28px; border-radius:50%; box-shadow:inset -4px -4px 8px rgba(0,0,0,.18), inset 4px 4px 8px rgba(255,255,255,.45); transition:transform .1s ease-out;}
+  .ball::after{ content:"?"; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:13px; font-weight:800; color:rgba(255,255,255,.85);}
+  .ball.wobble{ animation:ballWobble .3s ease-in-out infinite;}
+  @keyframes ballWobble{ 0%,100%{ transform:translate(0,0) rotate(0deg);} 33%{ transform:translate(2px,-1px) rotate(5deg);} 66%{ transform:translate(-2px,1px) rotate(-5deg);}}
+
+  /* 控制区：左投币口 中GO 右拉杆 */
+  .controls{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 4px 0;}
+  /* 投币口 */
+  .coin-slot-box{ display:flex; flex-direction:column; align-items:center; gap:4px; width:64px; flex-shrink:0;}
+  .coin-slot-box .slot-frame{
+    width:48px; height:32px; background:linear-gradient(180deg,#D4A843,#B88A28);
+    border-radius:8px; display:flex; align-items:center; justify-content:center;
+    border:2px solid #A07820; position:relative;
+  }
+  .coin-slot-box .slot-frame .slot-hole{
+    width:30px; height:6px; background:#7A5A10; border-radius:3px;
+  }
+  .coin-slot-box .slot-frame .coin-icon{ position:absolute; top:-6px; right:-4px; font-size:14px;}
+  .coin-slot-box .slot-label{ font-size:9px; color:#A07820; font-weight:600;}
+
+  /* GO 按钮 */
+  .btn-go{
+    background:linear-gradient(135deg,#88B97A,#6A9E5E); color:#fff;
+    width:64px; height:64px; border-radius:50%; border:none;
+    font-size:17px; font-weight:800; cursor:pointer;
+    box-shadow:0 5px 0 #5A8A4E, 0 8px 14px rgba(0,0,0,.18);
+    transition:all .1s; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .btn-go:active{ transform:translateY(3px); box-shadow:0 2px 0 #5A8A4E, 0 3px 8px rgba(0,0,0,.15);}
+  .btn-go:disabled{ background:linear-gradient(135deg,#C0D0B8,#A8B8A0); box-shadow:0 5px 0 #90A088; cursor:not-allowed; opacity:.7;}
+  .btn-go.arming{ animation:goPulse 1s ease-in-out infinite;}
+  @keyframes goPulse{ 0%,100%{ box-shadow:0 5px 0 #5A8A4E, 0 8px 14px rgba(0,0,0,.18), 0 0 0 0 rgba(136,185,122,.4);} 50%{ box-shadow:0 5px 0 #5A8A4E, 0 8px 14px rgba(0,0,0,.18), 0 0 0 14px rgba(136,185,122,0);}}
+
+  .tilt-hint{ flex:1; text-align:center; font-size:10px; color:var(--sub); line-height:1.4;}
+  .tilt-hint .tilt-icon{ font-size:16px; display:block; margin-bottom:1px;}
+  .tilt-hint.active{ color:var(--green-d); font-weight:600;}
+
+  /* 拉杆 */
+  .lever-wrap{ position:relative; width:52px; height:72px; flex-shrink:0; cursor:pointer;}
+  .lever-wrap.disabled{ opacity:.5; pointer-events:none;}
+  .lever-base{ position:absolute; bottom:0; left:50%; transform:translateX(-50%); width:36px; height:14px; background:linear-gradient(180deg,#C9A647,#A88A30); border-radius:7px; border:1.5px solid #8C7530;}
+  .lever-stick{ position:absolute; bottom:12px; left:50%; transform:translateX(-50%); width:6px; height:48px; background:linear-gradient(180deg,#E8E8E8,#999); border-radius:3px; transform-origin:bottom center; transition:transform .15s ease;}
+  .lever-ball{ position:absolute; top:-10px; left:50%; transform:translateX(-50%); width:22px; height:22px; border-radius:50%; background:radial-gradient(circle at 30% 30%,#FF8A8A,#E26A6A); box-shadow:0 2px 5px rgba(0,0,0,.25);}
+  .lever-wrap.pulled .lever-stick{ transform:translateX(-50%) rotate(55deg);}
+  .lever-wrap.pulled .lever-ball{ background:radial-gradient(circle at 30% 30%,#FFB0B0,#E88080);}
+
+  /* 弹窗 */
+  .modal-mask{ position:fixed; inset:0; background:rgba(40,35,30,.45); display:flex; align-items:center; justify-content:center; z-index:100; opacity:0; pointer-events:none; transition:opacity .3s;}
+  .modal-mask.show{ opacity:1; pointer-events:auto;}
+  .modal{ background:var(--card); border-radius:24px; padding:24px 28px; text-align:center; max-width:300px; transform:scale(.7); transition:transform .4s cubic-bezier(.34,1.56,.64,1); box-shadow:0 20px 60px rgba(0,0,0,.2); max-height:85vh; overflow-y:auto;}
+  .modal-mask.show .modal{ transform:scale(1);}
+  .modal .emoji-big{ font-size:56px; line-height:1; margin-bottom:8px; display:inline-block;}
+  .modal-mask.show .modal .emoji-big{ animation:bounce .8s ease;}
+  @keyframes bounce{ 0%,100%{ transform:translateY(0) scale(1);} 30%{ transform:translateY(-15px) scale(1.1);} 60%{ transform:translateY(-5px) scale(1.05);}}
+  .modal .title{ font-size:18px; font-weight:800; color:#1f1d1a; margin-bottom:6px;}
+  .modal .desc{ font-size:13px; color:var(--sub); margin-bottom:16px; line-height:1.5;}
+  .modal .btn-ok{ background:var(--green-d); color:#fff; padding:8px 28px; border:none; border-radius:16px; font-size:13px; font-weight:600; cursor:pointer;}
+  .reward-modal .ball-show{ width:90px; height:90px; border-radius:50%; margin:0 auto 12px; display:flex; align-items:center; justify-content:center; font-size:11px; color:#fff; font-weight:700; text-align:center; box-shadow:inset -6px -6px 12px rgba(0,0,0,.2), inset 6px 6px 12px rgba(255,255,255,.4); animation:popIn .5s cubic-bezier(.34,1.56,.64,1); padding:4px; line-height:1.2;}
+  @keyframes popIn{ 0%{ transform:scale(0) rotate(-180deg);} 100%{ transform:scale(1) rotate(0);}}
+  .edit-modal{ text-align:left; width:290px;}
+  .edit-modal .title{ text-align:center; margin-bottom:14px;}
+  .edit-modal label{ font-size:11px; color:var(--sub); display:block; margin:10px 0 4px;}
+  .edit-modal input, .edit-modal textarea, .edit-modal select{ width:100%; border:1.5px solid var(--line); border-radius:10px; padding:8px 10px; font-size:12px; font-family:inherit; background:#FFFCF5; color:var(--text); resize:vertical;}
+  .edit-modal input:focus, .edit-modal textarea:focus, .edit-modal select:focus{ outline:none; border-color:var(--blue-d);}
+  .edit-modal .row{ display:flex; gap:8px; margin-top:14px;}
+  .edit-modal .row .btn-c{ flex:1; padding:8px; border-radius:12px; font-size:12px; font-weight:600; border:none; cursor:pointer;}
+  .edit-modal .btn-cancel{ background:#ECE2CC; color:var(--sub);} .edit-modal .btn-save{ background:var(--green-d); color:#fff;}
+  .edit-modal .file-area{ border:1.5px dashed var(--line); border-radius:10px; padding:10px; text-align:center; background:#FFFCF5;}
+  .edit-modal .file-area .upload-btn{ font-size:11px; color:var(--blue-d); cursor:pointer; font-weight:600;}
+  .edit-modal .file-area .upload-btn::before{ content:"📎 ";}
+  .edit-modal .file-area .file-name{ font-size:10px; color:var(--green-d); margin-top:4px;}
+  .edit-modal .emoji-picker{ display:flex; flex-wrap:wrap; gap:4px; margin-top:6px;}
+  .edit-modal .emoji-picker span{ font-size:18px; cursor:pointer; padding:2px 4px; border-radius:6px; transition:background .15s;}
+  .edit-modal .emoji-picker span:hover{ background:#F0E6D0;}
+  .edit-modal .emoji-picker span.selected{ background:var(--blue); outline:2px solid var(--blue-d);}
+  .edit-modal .color-picker{ display:flex; flex-wrap:wrap; gap:5px; margin-top:6px;}
+  .edit-modal .color-picker span{ width:22px; height:22px; border-radius:50%; cursor:pointer; border:2px solid transparent; transition:all .15s;}
+  .edit-modal .color-picker span.selected{ border-color:#333; transform:scale(1.15);}
+
+  .reward-edit-list{ max-height:200px; overflow-y:auto; margin-bottom:8px;}
+  .reward-edit-item{ display:flex; align-items:center; gap:8px; margin-bottom:6px;}
+  .reward-edit-item .color-dot{ width:20px; height:20px; border-radius:50%; flex-shrink:0; box-shadow:inset -2px -2px 4px rgba(0,0,0,.2);}
+  .reward-edit-item input{ flex:1;}
+
+  /* 金币记录弹窗 */
+  .coin-log{ text-align:left; width:300px;}
+  .coin-log .log-list{ max-height:250px; overflow-y:auto; margin:10px 0;}
+  .coin-log .log-item{ display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px dashed var(--line); font-size:11px;}
+  .coin-log .log-item:last-child{ border-bottom:none;}
+  .coin-log .log-item .log-icon{ width:24px; text-align:center; font-size:16px;}
+  .coin-log .log-item .log-desc{ flex:1; color:var(--text);}
+  .coin-log .log-item .log-desc small{ display:block; color:var(--sub); font-size:9px; margin-top:1px;}
+  .coin-log .log-item .log-amt{ font-weight:700; font-size:13px;}
+  .coin-log .log-item .log-amt.plus{ color:var(--green-d);}
+  .coin-log .log-item .log-amt.minus{ color:var(--red);}
+
+  .home-indicator{ height:max(20px, env(safe-area-inset-bottom)); display:flex; align-items:center; justify-content:center; padding-bottom:env(safe-area-inset-bottom);}
+  .home-indicator::before{ content:""; width:134px; height:5px; background:#1a1816; border-radius:3px; opacity:.6;}
+  .coin-fly{ position:fixed; font-size:24px; z-index:200; pointer-events:none; animation:coinFly 1s ease-out forwards;}
+  @keyframes coinFly{ 0%{ opacity:1; transform:scale(1);} 100%{ opacity:0; transform:scale(.5) translateY(-80px);}}
+  .shake-overlay{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(255,248,236,.8); border-radius:14px; z-index:5; flex-direction:column; gap:6px;}
+  .shake-overlay .shake-emoji{ font-size:36px; animation:shakeIcon .5s ease-in-out infinite;}
+  @keyframes shakeIcon{ 0%,100%{ transform:rotate(-10deg);} 50%{ transform:rotate(10deg);}}
+  .shake-overlay .shake-text{ font-size:12px; color:var(--orange-d); font-weight:700;}
+  .shake-overlay.hidden{ display:none;}
+
+  /* 任务分类标签选择 */
+  .tag-selector{ display:flex; flex-wrap:wrap; gap:4px; margin-top:4px;}
+  .tag-selector span{ font-size:10px; padding:3px 8px; border-radius:8px; cursor:pointer; font-weight:600; opacity:.6; transition:all .15s;}
+  .tag-selector span.selected{ opacity:1; transform:scale(1.05);}
+
+  /* ===== iPhone 17 Pro Max 宽屏适配 (440px+) ===== */
+  @media (min-width:430px){
+    .content{ padding:14px 20px 16px;}
+    .card, .school-card, .claw-card{ padding:14px 16px;}
+    .nav-item{ padding:9px 6px; font-size:12px;}
+    .nav-item .emoji{ font-size:20px;}
+    .stats{ gap:10px;}
+    .stat-card{ padding:14px 10px 12px;}
+    .stat-card .num{ font-size:26px;}
+    .top-bar .title{ font-size:18px;}
+    .machine{ height:220px;}
+    .btn-go{ width:70px; height:70px; font-size:18px;}
+    .task .name{ font-size:13.5px;}
+    .card-head .left{ font-size:14px;}
+    .rope-card .rcount{ font-size:32px;}
+  }
+  /* 超宽屏 440px+ (17 Pro Max 逻辑像素) */
+  @media (min-width:440px){
+    .content{ padding:16px 22px 18px;}
+    .sidebar{ width:128px;}
+    .nav-item{ font-size:12.5px; padding:10px 8px;}
+    .nav-item .emoji{ font-size:22px;}
+    .quote-card .qtext{ font-size:13.5px;}
+    .stats{ gap:12px;}
+    .stat-card .num{ font-size:28px;}
+    .stat-card .label{ font-size:11px;}
+    .claw-card{ padding:18px;}
+    .machine{ height:230px;}
+    .ball{ width:32px; height:32px;}
+    .btn-go{ width:74px; height:74px; font-size:19px;}
+    .coin-slot-box .slot-frame{ width:54px; height:36px;}
+    .lever-wrap{ width:56px; height:78px;}
+    .lever-ball{ width:24px; height:24px;}
+  }
+  /* 横屏适配 */
+  @media (orientation:landscape) and (max-height:430px){
+    .sidebar{ width:100px;}
+    .machine{ height:160px;}
+  }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="status-bar">
+    <div>WorkBuddy</div>
+    <div class="right">
+      <span class="ic ic-sig"></span>
+      <span class="ic-wifi"></span>
+      <span class="ic-bat"><span class="fill"></span></span>
+    </div>
+  </div>
+  <div class="top-bar">
+    <div class="home">⌂</div>
+    <div class="title" contenteditable="true" id="workbenchTitle" data-default="我的工作台">我的工作台</div>
+    <div class="actions">
+      <span class="more">⋯</span>
+      <span class="rec"></span>
+    </div>
+  </div>
+  <div class="main">
+    <aside class="sidebar" id="sidebar">
+      <div class="time-label" id="timeLabel">10:30</div>
+      <div id="navList"></div>
+      <div class="nav-add" onclick="addNavItem()">添加分类</div>
+    </aside>
+    <section class="content" id="content">
+      <div class="date-block">
+        <span class="day" id="dateDay">7月30日</span>
+        <span class="sub" id="dateSub">周三 ｜ 2026-07-30</span>
+      </div>
+      <div class="quote-card">
+        <div class="qt">每日金句 <span class="refresh" onclick="newQuote()">↻ 换一句</span></div>
+        <div class="qtext" contenteditable="true" id="quoteText">让优秀成为一种习惯，让陪伴成为最长情的告白。</div>
+        <div class="qtag" id="quoteTag">— 给妈妈的提醒</div>
+      </div>
+      <div class="stats">
+        <div class="stat-card green">
+          <div class="num g" id="learnNum">3/5</div>
+          <div class="label">学习任务</div>
+          <div class="pbar"><i id="learnBar" style="width:60%"></i></div>
+          <div class="pct" id="learnPct">60%</div>
+        </div>
+        <div class="stat-card blue">
+          <div class="num b" id="ropeNum">0</div>
+          <div class="label">跳绳/1000</div>
+          <div class="pbar"><i id="ropeBar" style="width:0%"></i></div>
+          <div class="pct" id="ropePct">0%</div>
+        </div>
+        <div class="stat-card yellow">
+          <div class="num y" id="readNum">12/20</div>
+          <div class="label">阅读页数</div>
+          <div class="pbar"><i id="readBar" style="width:60%"></i></div>
+          <div class="pct" id="readPct">60%</div>
+        </div>
+      </div>
+      <div class="card" id="overviewCard">
+        <div class="card-head">
+          <div class="left"><span class="ico">📊</span>每日总览</div>
+          <span class="pct-big" id="overviewPct" style="color:var(--green-d)">45%</span>
+        </div>
+        <div class="pbar-big"><i id="overviewBar" style="width:45%;background:linear-gradient(90deg,#88B97A,#A8D89A)"></i></div>
+      </div>
+      <div class="school-card" id="schoolCard">
+        <div class="sch-head" onclick="toggleSchool()">
+          <div class="title-wrap"><span class="ico">🏫</span><span class="name">校内学习</span></div>
+          <span class="arrow">▶</span>
+        </div>
+        <div class="sch-summary">
+          <div class="pbar-big"><i id="schoolBar" style="width:57%;background:linear-gradient(90deg,#6E9BD1,#A584CC)"></i></div>
+          <span class="pct-big" id="schoolPct" style="color:var(--blue-d)">57%</span>
+        </div>
+        <div class="sch-body">
+          <div class="sub-subject math">
+            <div class="ss-head">
+              <div class="left"><span class="dot"></span>🔢 数学</div>
+              <div style="display:flex;align-items:center;gap:8px;"><span class="pct" id="mathPct">60%</span><button class="btn btn-add" onclick="addTask('math')">新增</button></div>
+            </div>
+            <div class="ss-bar"><i id="mathBar" style="width:60%"></i></div>
+            <div id="mathList"></div>
+          </div>
+          <div class="sub-subject chinese">
+            <div class="ss-head">
+              <div class="left"><span class="dot"></span>📝 语文</div>
+              <div style="display:flex;align-items:center;gap:8px;"><span class="pct" id="chinesePct">40%</span><button class="btn btn-add" onclick="addTask('chinese')">新增</button></div>
+            </div>
+            <div class="ss-bar"><i id="chineseBar" style="width:40%"></i></div>
+            <div id="chineseList"></div>
+          </div>
+          <div class="sub-subject english">
+            <div class="ss-head">
+              <div class="left"><span class="dot"></span>🌐 英语</div>
+              <div style="display:flex;align-items:center;gap:8px;"><span class="pct" id="englishPct">70%</span><button class="btn btn-add" onclick="addTask('english')">新增</button></div>
+            </div>
+            <div class="ss-bar"><i id="englishBar" style="width:70%"></i></div>
+            <div id="englishList"></div>
+          </div>
+        </div>
+      </div>
+      <div id="dynamicCards"></div>
+      <div class="rope-card" id="ropeCard">
+        <div class="rh">
+          <div class="t"><span>🤸</span>跳绳运动打卡</div>
+          <span class="goal">目标 1000 个</span>
+        </div>
+        <div class="rcount"><span id="ropeCount">0</span><small> / 1000</small></div>
+        <div class="rbar"><i id="ropeProgressBar" style="width:0%"></i></div>
+        <div class="ract">
+          <button class="btn-do" onclick="addRope(100)">+100</button>
+          <button class="btn-do" onclick="addRope(200)" style="background:#F5B26B">+200</button>
+          <button class="btn-do" onclick="completeRope()" style="background:#88B97A">一键完成</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <div class="left"><span class="ico">📄</span>今日待办</div>
+          <button class="btn btn-add" onclick="addTask('todo')">新增</button>
+        </div>
+        <div id="todoList"></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <div class="left"><span style="color:var(--green-d);font-size:15px;">✓</span>今日已完成 <span id="doneCount" style="color:var(--sub);font-weight:500;">(0)</span></div>
+        </div>
+        <div id="doneList"></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <div class="left"><span class="ico">📆</span>次日预备</div>
+          <button class="btn btn-add" onclick="addTask('next')">新增</button>
+        </div>
+        <div id="nextList"></div>
+      </div>
+      <div class="news-card">
+        <div class="nh">📡 AI新闻推送</div>
+        <div class="news-item"><span class="tag">教育</span><span class="ntext">教育部发布2026年中小学生阅读指导目录，新增科普类书目30种。</span></div>
+        <div class="news-item"><span class="tag">科技</span><span class="ntext">AI个性化学习助手进入试点，可依据学情自动生成练习。</span></div>
+        <div class="news-item"><span class="tag">健康</span><span class="ntext">研究显示：每日跳绳10分钟有助提升儿童专注力与睡眠质量。</span></div>
+      </div>
+      <div class="card memo-card">
+        <div class="card-head"><div class="left"><span class="ico">🗒️</span>备忘录</div></div>
+        <div class="memo-text" contenteditable="true">· 周三下午4点钢琴课
+· 读完《夏洛的网》第5章
+· 准备科学实验材料：小苏打、醋</div>
+      </div>
+      <!-- 抓娃娃机 -->
+      <div class="claw-card" id="clawCard">
+        <div class="ch">
+          <div class="t"><span>🎮</span>抓娃娃奖励机</div>
+          <div class="coin-display" onclick="openCoinLog()">🪙 <span id="coinCount">0</span> 金币</div>
+        </div>
+        <div class="cycle-switch">
+          <button class="active" onclick="setCycle('daily',this)">每日</button>
+          <button onclick="setCycle('weekly',this)">每周</button>
+          <button onclick="setCycle('monthly',this)">每月</button>
+        </div>
+        <div class="cycle-info" id="cycleInfo">
+          完成每日目标获得1金币 · <span class="reward-edit" onclick="openRewardEdit()">编辑奖励池</span>
+        </div>
+        <div class="machine" id="machine">
+          <div class="top-bar-m"></div>
+          <div class="rail"></div>
+          <div class="claw-arm" id="clawArm"><div class="claw"></div></div>
+          <div class="ball-pool" id="ballPool"></div>
+          <div class="shake-overlay hidden" id="shakeOverlay">
+            <span class="shake-emoji">📱</span>
+            <span class="shake-text">爪子自动摇摆中<br>按拉杆抓取！</span>
+          </div>
+        </div>
+        <!-- 控制区：左投币口 中GO 右拉杆 -->
+        <div class="controls">
+          <div class="coin-slot-box">
+            <div class="slot-frame">
+              <span class="coin-icon">🪙</span>
+              <div class="slot-hole"></div>
+            </div>
+            <span class="slot-label">投币口</span>
+          </div>
+          <button class="btn-go" id="btnGo" onclick="onGo()">GO</button>
+          <div class="lever-wrap disabled" id="leverWrap" onclick="onLever()">
+            <div class="lever-stick"><div class="lever-ball"></div></div>
+            <div class="lever-base"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+  <div class="home-indicator"></div>
+</div>
+
+<!-- 鼓励弹窗 -->
+<div class="modal-mask" id="encourageModal">
+  <div class="modal">
+    <span class="emoji-big" id="encEmoji">🎉</span>
+    <div class="title" id="encTitle">太棒啦！</div>
+    <div class="desc" id="encDesc">跳绳1000个目标完成！</div>
+    <button class="btn-ok" onclick="closeModal('encourageModal')">继续加油</button>
+  </div>
+</div>
+<!-- 奖励弹窗 -->
+<div class="modal-mask" id="rewardModal">
+  <div class="modal reward-modal">
+    <div class="ball-show" id="rewardBall">?</div>
+    <div class="title" id="rewardTitle">抓到啦！</div>
+    <div class="desc" id="rewardDesc">恭喜获得专属奖励！</div>
+    <button class="btn-ok" onclick="closeModal('rewardModal')">收下奖励</button>
+  </div>
+</div>
+<!-- 编辑任务弹窗 -->
+<div class="modal-mask" id="editModal">
+  <div class="modal edit-modal">
+    <div class="title" id="editTitle">编辑任务</div>
+    <label>任务名称</label>
+    <input type="text" id="editName" placeholder="输入任务名称">
+    <label>时间</label>
+    <input type="text" id="editTime" placeholder="如 09:00">
+    <label>完成进度 (%)</label>
+    <input type="number" id="editPct" min="0" max="100" placeholder="0-100">
+    <label>分类标签</label>
+    <div class="tag-selector" id="tagSelector"></div>
+    <label>上传资料 (PDF/Word/图片等)</label>
+    <div class="file-area" id="fileArea">
+      <div class="upload-btn" onclick="document.getElementById('editFile').click()">点击上传或从微信/WPS等导入</div>
+      <input type="file" id="editFile" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.gif" style="display:none" onchange="onFilePick(event)">
+      <div class="file-name" id="fileName"></div>
+      <div style="font-size:9px;color:var(--soft);margin-top:4px;">支持 PDF / Word / Excel / PPT / 图片 / TXT</div>
+    </div>
+    <div class="row">
+      <button class="btn-c btn-cancel" onclick="closeModal('editModal')">取消</button>
+      <button class="btn-c btn-save" onclick="saveEdit()">保存</button>
+    </div>
+  </div>
+</div>
+<!-- 导航项编辑弹窗 -->
+<div class="modal-mask" id="navEditModal">
+  <div class="modal edit-modal">
+    <div class="title" id="navEditTitle">添加分类</div>
+    <label>分类名称</label>
+    <input type="text" id="navEditName" placeholder="如：美术兴趣">
+    <label>图标</label>
+    <div class="emoji-picker" id="navEmojiPicker"></div>
+    <label>颜色</label>
+    <div class="color-picker" id="navColorPicker"></div>
+    <div class="row">
+      <button class="btn-c btn-cancel" onclick="closeModal('navEditModal')">取消</button>
+      <button class="btn-c btn-save" onclick="saveNavItem()">保存</button>
+    </div>
+  </div>
+</div>
+<!-- 奖励池编辑弹窗 -->
+<div class="modal-mask" id="rewardEditModal">
+  <div class="modal edit-modal" style="width:300px;">
+    <div class="title">编辑奖励池</div>
+    <div style="font-size:10.5px;color:var(--sub);margin-bottom:8px;">周期：<span id="rewardEditCycle">每日</span></div>
+    <div class="reward-edit-list" id="rewardEditList"></div>
+    <button class="btn btn-add" style="width:100%;margin-bottom:8px;" onclick="addRewardItem()">+ 新增奖励</button>
+    <div class="row">
+      <button class="btn-c btn-cancel" onclick="closeModal('rewardEditModal')">取消</button>
+      <button class="btn-c btn-save" onclick="saveRewards()">保存</button>
+    </div>
+  </div>
+</div>
+<!-- 金币记录弹窗 -->
+<div class="modal-mask" id="coinLogModal">
+  <div class="modal coin-log">
+    <div class="title">金币存取记录</div>
+    <div style="display:flex;justify-content:space-around;margin-bottom:10px;font-size:12px;">
+      <span>当前：<b style="color:var(--gold);" id="logCurrent">0</b> 枚</span>
+      <span>累计获得：<b style="color:var(--green-d);" id="logTotal">0</b> 枚</span>
+      <span>已消费：<b style="color:var(--red);" id="logSpent">0</b> 枚</span>
+    </div>
+    <div class="log-list" id="logList"></div>
+    <button class="btn-ok" onclick="closeModal('coinLogModal')" style="width:100%;">关闭</button>
+  </div>
+</div>
+
+<script>
+// ===== 持久化存储 =====
+function save(){ localStorage.setItem('pcw_data', JSON.stringify({tasks, navItems, coins, coinLog, rewardPool, ropeCount, ropeDone, lastCoinEarned})); }
+function load(){
+  try{
+    const d = JSON.parse(localStorage.getItem('pcw_data'));
+    if(d){
+      if(d.tasks) tasks = d.tasks;
+      if(d.navItems) navItems = d.navItems;
+      if(d.coins !== undefined) coins = d.coins;
+      if(d.coinLog) coinLog = d.coinLog;
+      if(d.rewardPool) rewardPool = d.rewardPool;
+      if(d.ropeCount !== undefined) ropeCount = d.ropeCount;
+      if(d.ropeDone !== undefined) ropeDone = d.ropeDone;
+      if(d.lastCoinEarned) lastCoinEarned = d.lastCoinEarned;
+    }
+  }catch(e){}
+}
+
+// ===== 数据模型 =====
+const COLORS_MAP = {math:'#6E9BD1', chinese:'#E89B4E', english:'#A584CC', outside:'#F5A8A8', reading:'#C9A647', todo:'#88B97A', next:'#9BC0E8'};
+const TAG_OPTIONS = [
+  {label:'重要', color:'#E26A6A', bg:'#FCE0E0'},
+  {label:'日常', color:'#88B97A', bg:'#D6EFCB'},
+  {label:'复习', color:'#6E9BD1', bg:'#D4E4F5'},
+  {label:'兴趣', color:'#A584CC', bg:'#E6DCF0'},
+  {label:'阅读', color:'#C9A647', bg:'#FBEAB4'},
+  {label:'运动', color:'#E89B4E', bg:'#FCE0C7'}
+];
+
+let tasks = {
+  math: [
+    {id:1, name:'完成口算100题', time:'17:00', pct:80, done:false, file:'', tag:'日常'},
+    {id:2, name:'应用题练习3道', time:'18:00', pct:40, done:false, file:'', tag:'重要'}
+  ],
+  chinese: [
+    {id:1, name:'背诵古诗《望庐山瀑布》', time:'19:00', pct:50, done:false, file:'', tag:'复习'},
+    {id:2, name:'生字词听写', time:'20:00', pct:30, done:false, file:'', tag:'日常'}
+  ],
+  english: [
+    {id:1, name:'英语单词打卡20个', time:'07:30', pct:100, done:true, file:'', tag:'日常'},
+    {id:2, name:'课文跟读2遍', time:'20:30', pct:40, done:false, file:'', tag:'复习'}
+  ],
+  outside: [{id:1, name:'钢琴练习30分钟', time:'16:00', pct:30, done:false, file:'', tag:'兴趣'}],
+  reading: [{id:1, name:'《夏洛的网》第5章', time:'21:00', pct:55, done:false, file:'', tag:'阅读'}],
+  todo: [{id:1, name:'整理书桌', time:'15:00', pct:0, done:false, file:'', tag:'日常'}],
+  next: []
+};
+
+let navItems = [
+  {key:'overview', emoji:'📋', name:'每日总安排', color:'#88B97A', type:'system'},
+  {key:'school', emoji:'🏫', name:'校内学习', color:'#6E9BD1', type:'system'},
+  {key:'outside', emoji:'🎨', name:'校外课程', color:'#F5A8A8', type:'task'},
+  {key:'reading', emoji:'📖', name:'阅读计划', color:'#C9A647', type:'task'},
+  {key:'rope', emoji:'🤸', name:'跳绳打卡', color:'#E89B4E', type:'system'},
+  {key:'news', emoji:'📡', name:'AI新闻', color:'#A584CC', type:'system'},
+  {key:'memo', emoji:'🗒️', name:'备忘录', color:'#88B97A', type:'system'}
+];
+
+let ropeCount = 0, ropeDone = false;
+let editing = {cat:'', id:0};
+let coins = 0;
+let coinLog = [];
+let lastCoinEarned = {daily:false, weekly:false, monthly:false};
+let currentCycle = 'daily';
+
+let rewardPool = {
+  daily: [
+    {text:'看一集\n动画片', color:'#F5A8A8'},{text:'吃一个\n冰淇淋', color:'#88B97A'},
+    {text:'玩30分钟\n游戏', color:'#A584CC'},{text:'吃一块\n巧克力', color:'#E89B4E'},
+    {text:'选一本\n新书', color:'#C9A647'},{text:'去公园\n玩', color:'#6E9BD1'},
+    {text:'挑一个\n小玩具', color:'#F5B26B'},{text:'吃水果\n拼盘', color:'#9BC0E8'}
+  ],
+  weekly: [
+    {text:'周末去\n游乐园', color:'#F5A8A8'},{text:'买一套\n乐高', color:'#88B97A'},
+    {text:'看一场\n电影', color:'#A584CC'},{text:'吃一次\n大餐', color:'#E89B4E'},
+    {text:'去科技馆\n参观', color:'#6E9BD1'},{text:'挑一双\n新鞋', color:'#C9A647'},
+    {text:'玩一整天\n游戏', color:'#F5B26B'},{text:'去动物园', color:'#9BC0E8'}
+  ],
+  monthly: [
+    {text:'买心仪\n大玩具', color:'#F5A8A8'},{text:'短途亲子\n旅行', color:'#88B97A'},
+    {text:'换新\n自行车', color:'#A584CC'},{text:'去主题乐园\n一日游', color:'#E89B4E'},
+    {text:'挑一套\n新书', color:'#C9A647'},{text:'学一门\n新兴趣', color:'#6E9BD1'},
+    {text:'办生日\n派对', color:'#F5B26B'},{text:'买智能\n手表', color:'#9BC0E8'}
+  ]
+};
+let tempRewards = [];
+const BALL_COLORS = ['#F5A8A8','#88B97A','#6E9BD1','#C9A647','#A584CC','#E89B4E','#F5B26B','#9BC0E8'];
+
+// ===== 每日金句 =====
+const quotes = [
+  {text:'每一次努力都在让你变得更强，宝贝加油！', tag:'— 给孩子的鼓励'},
+  {text:'你今天的坚持，就是明天优秀的基石。', tag:'— 给孩子的鼓励'},
+  {text:'犯错没关系，勇敢尝试的你最闪亮。', tag:'— 给孩子的鼓励'},
+  {text:'每一小步的进步，都值得大大的拥抱。', tag:'— 给孩子的鼓励'},
+  {text:'你的好奇心，是通向世界的钥匙。', tag:'— 给孩子的鼓励'},
+  {text:'今天比昨天好一点点，就是了不起的进步。', tag:'— 给孩子的鼓励'},
+  {text:'慢慢来，比较快。享受学习的每一刻。', tag:'— 给孩子的鼓励'},
+  {text:'你不需要完美，你只需要做你自己。', tag:'— 给孩子的鼓励'},
+  {text:'温柔而坚定地陪伴，是给孩子最好的礼物。', tag:'— 给妈妈的提醒'},
+  {text:'孩子的笑容，比满分卷子更珍贵。', tag:'— 给妈妈的提醒'},
+  {text:'深呼吸，慢一点，情绪稳定的妈妈最美丽。', tag:'— 给妈妈的提醒'},
+  {text:'陪伴不是盯着写作业，而是和孩子一起成长。', tag:'— 给妈妈的提醒'},
+  {text:'今天孩子惹你生气了？抱抱他，也抱抱自己。', tag:'— 给妈妈的提醒'},
+  {text:'别着急催促，花开有自己的节奏。', tag:'— 给妈妈的提醒'},
+  {text:'允许孩子慢慢来，也允许自己偶尔不完美。', tag:'— 给妈妈的提醒'},
+  {text:'当你想发火时，先数三个数，爱比愤怒更有力量。', tag:'— 给妈妈的提醒'},
+  {text:'孩子的每一次"为什么"，都是在说"我爱你"。', tag:'— 给妈妈的提醒'},
+  {text:'今天，试着对孩子说三句肯定的话吧。', tag:'— 给妈妈的提醒'},
+  {text:'陪伴的质量，不在于时间长短，而在于全心全意。', tag:'— 给妈妈的提醒'},
+  {text:'孩子是在你的目光里，长成自己最好的样子。', tag:'— 给妈妈的提醒'}
+];
+function getDailyQuote(){ const now=new Date(); const day=Math.floor((now-new Date(now.getFullYear(),0,0))/86400000); return quotes[day%quotes.length]; }
+function newQuote(){ const q=quotes[Math.floor(Math.random()*quotes.length)]; document.getElementById('quoteText').textContent=q.text; document.getElementById('quoteTag').textContent=q.tag; }
+
+// ===== 左导航渲染 =====
+function renderNav(){
+  const list = document.getElementById('navList');
+  list.innerHTML = navItems.map((item,i)=>{
+    const pct = getNavPct(item);
+    return `
+      <div class="nav-item ${item.key===currentNavKey?'active':''}" data-key="${item.key}" onclick="navClick('${item.key}')">
+        <span class="emoji">${item.emoji}</span>
+        ${item.name}
+        <div class="mini-bar"><i style="width:${pct}%;background:${item.color}"></i></div>
+        <div class="nav-edit-btns">
+          <button class="ne-edit" onclick="event.stopPropagation();editNavItem(${i})">✎</button>
+          ${item.type!=='system' ? `<button class="ne-del" onclick="event.stopPropagation();delNavItem(${i})">×</button>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+let currentNavKey = 'overview';
+function getNavPct(item){
+  if(item.key==='overview') return calcOverall();
+  if(item.key==='school') return calcSchoolAvg();
+  if(item.key==='rope') return Math.min(100,Math.round(ropeCount/1000*100));
+  if(tasks[item.key]) return calcPct(item.key);
+  return 0;
+}
+function navClick(key){
+  currentNavKey = key;
+  renderNav();
+  const map = {overview:'overviewCard', school:'schoolCard', outside:'outsideList', reading:'readingList', rope:'ropeCard', news:'.news-card', memo:'.memo-card'};
+  const id = map[key];
+  if(id){
+    const el = id.startsWith('.') ? document.querySelector(id) : document.getElementById(id);
+    if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+  }
+  if(key==='school') document.getElementById('schoolCard').classList.add('expanded');
+  // 动态分类滚动到对应卡片
+  const dynCard = document.getElementById('dyn_'+key);
+  if(dynCard) dynCard.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+// 导航编辑
+let navEditing = {idx:-1, emoji:'', color:''};
+const NAV_EMOJIS = ['📋','🏫','🎨','📖','🤸','📡','🗒️','🔢','📝','🌐','🎵','⚽','🧪','🔬','🎨','🎤','🎲','⭐','🌟','💡','🏆','🎁','📚','✏️','🖍️','🧩','🎯','🐾','🌱','🌈'];
+const NAV_COLORS = ['#88B97A','#6E9BD1','#F5A8A8','#C9A647','#A584CC','#E89B4E','#F5B26B','#9BC0E8','#E26A6A','#6A9E5E'];
+
+function addNavItem(){
+  navEditing = {idx:-1, emoji:'⭐', color:'#A584CC'};
+  document.getElementById('navEditTitle').textContent = '添加分类';
+  document.getElementById('navEditName').value = '';
+  renderNavEmojiPicker();
+  renderNavColorPicker();
+  openModal('navEditModal');
+}
+function editNavItem(idx){
+  const item = navItems[idx];
+  navEditing = {idx, emoji:item.emoji, color:item.color};
+  document.getElementById('navEditTitle').textContent = '编辑分类';
+  document.getElementById('navEditName').value = item.name;
+  renderNavEmojiPicker();
+  renderNavColorPicker();
+  openModal('navEditModal');
+}
+function delNavItem(idx){
+  if(!confirm('确定删除「'+navItems[idx].name+'」？相关任务也会删除。')) return;
+  const key = navItems[idx].key;
+  if(tasks[key]) delete tasks[key];
+  navItems.splice(idx,1);
+  save(); renderNav(); renderDynamicCards(); updateProgress();
+}
+function renderNavEmojiPicker(){
+  document.getElementById('navEmojiPicker').innerHTML = NAV_EMOJIS.map(e=>
+    `<span class="${e===navEditing.emoji?'selected':''}" onclick="navEditing.emoji='${e}';renderNavEmojiPicker()">${e}</span>`
+  ).join('');
+}
+function renderNavColorPicker(){
+  document.getElementById('navColorPicker').innerHTML = NAV_COLORS.map(c=>
+    `<span class="${c===navEditing.color?'selected':''}" style="background:${c}" onclick="navEditing.color='${c}';renderNavColorPicker()"></span>`
+  ).join('');
+}
+function saveNavItem(){
+  const name = document.getElementById('navEditName').value.trim();
+  if(!name){ alert('请输入分类名称'); return; }
+  if(navEditing.idx === -1){
+    const key = 'custom_'+Date.now();
+    navItems.push({key, emoji:navEditing.emoji, name, color:navEditing.color, type:'custom'});
+    tasks[key] = [];
+  } else {
+    const item = navItems[navEditing.idx];
+    item.name = name; item.emoji = navEditing.emoji; item.color = navEditing.color;
+  }
+  closeModal('navEditModal');
+  save(); renderNav(); renderDynamicCards();
+}
+
+// ===== 动态分类卡片 =====
+function renderDynamicCards(){
+  const container = document.getElementById('dynamicCards');
+  const customs = navItems.filter(i=>i.type==='custom' || i.type==='task');
+  container.innerHTML = customs.map(item=>{
+    const pct = calcPct(item.key);
+    return `
+      <div class="card" id="dyn_${item.key}">
+        <div class="card-head">
+          <div class="left"><span class="ico">${item.emoji}</span>${item.name}</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="pct-big" style="color:${item.color}">${pct}%</span>
+            <button class="btn btn-add" onclick="addTask('${item.key}')">新增</button>
+          </div>
+        </div>
+        <div class="pbar-big"><i style="width:${pct}%;background:${item.color}"></i></div>
+        <div id="${item.key}List"></div>
+      </div>
+    `;
+  }).join('');
+  customs.forEach(item=>renderList(item.key));
+}
+
+// ===== 任务渲染 =====
+function renderList(cat){
+  const list = document.getElementById(cat+'List');
+  if(!list) return;
+  const arr = tasks[cat] || [];
+  if(arr.length === 0){
+    list.innerHTML = '<div style="text-align:center;color:#B5AC9B;font-size:11px;padding:6px 0;">暂无条目，点击"新增"添加</div>';
+    return;
+  }
+  const color = getColorForCat(cat);
+  list.innerHTML = arr.map((t,idx) => {
+    const tagInfo = TAG_OPTIONS.find(tg=>tg.label===t.tag) || TAG_OPTIONS[1];
+    return `
+    <div class="task ${t.done?'done':''}" data-cat="${cat}" data-id="${t.id}" draggable="true" ondragstart="onDragStart(event,'${cat}',${idx})" ondragover="onDragOver(event)" ondrop="onDrop(event,'${cat}',${idx})">
+      <span class="drag-handle">⋮⋮</span>
+      <div class="check" onclick="toggleDone('${cat}',${t.id})"></div>
+      <div class="body">
+        <div class="name">${t.name}</div>
+        <div class="meta">
+          ${t.time?`<span class="time">${t.time}</span>`:''}
+          <span class="tag" style="color:${tagInfo.color};background:${tagInfo.bg};">${t.tag||'日常'}</span>
+          <div class="tbar"><i style="width:${t.pct}%;background:${color}"></i></div>
+          <span class="tpct">${t.pct}%</span>
+        </div>
+        ${t.file?`<div class="meta"><span class="file-tag" onclick="alert('文件：${t.file}')">📎 ${t.file}</span></div>`:''}
+      </div>
+      <div class="acts">
+        <button class="btn btn-edit" onclick="editTask('${cat}',${t.id})">编辑</button>
+        <button class="btn btn-del" onclick="delTask('${cat}',${t.id})">删</button>
+      </div>
+    </div>
+  `;
+  }).join('');
+}
+function getColorForCat(cat){
+  const item = navItems.find(i=>i.key===cat);
+  return item ? item.color : (COLORS_MAP[cat]||'#88B97A');
+}
+
+// ===== 拖拽排序 =====
+let dragData = {cat:'', idx:-1};
+function onDragStart(e, cat, idx){ dragData={cat,idx}; e.target.classList.add('dragging'); }
+function onDragOver(e){ e.preventDefault(); }
+function onDrop(e, cat, targetIdx){
+  e.preventDefault();
+  if(dragData.cat !== cat) return; // 同分类内拖拽
+  const arr = tasks[cat];
+  const moved = arr.splice(dragData.idx,1)[0];
+  arr.splice(targetIdx,0,moved);
+  save(); renderList(cat);
+}
+
+function renderAll(){
+  ['math','chinese','english','outside','reading','todo','next'].forEach(renderList);
+  renderDynamicCards();
+  updateProgress();
+  renderDone();
+}
+function renderDone(){
+  const done = [];
+  Object.keys(tasks).forEach(cat=>{
+    if(cat==='next') return;
+    (tasks[cat]||[]).forEach(t=>{ if(t.done) done.push({...t,cat}); });
+  });
+  document.getElementById('doneCount').textContent = `(${done.length})`;
+  const list = document.getElementById('doneList');
+  if(done.length===0){ list.innerHTML = '<div style="text-align:center;color:#B5AC9B;font-size:11px;padding:6px 0;">还没有完成的任务，加油！</div>'; return; }
+  list.innerHTML = done.map(t=>`
+    <div class="task done">
+      <div class="check"></div>
+      <div class="body">
+        <div class="name">${t.name}</div>
+        <div class="meta">${t.time?`<span class="time" style="background:#E6F1DC;color:#5a8a4a;">${t.time}</span>`:''}<span style="font-size:10px;color:#88B97A;">✓ 已完成</span></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ===== 进度计算 =====
+function calcPct(cat){
+  const arr = tasks[cat]||[];
+  if(!arr.length) return 0;
+  return Math.round(arr.reduce((s,t)=>s+t.pct,0)/arr.length);
+}
+function calcOverall(){
+  const cats = ['math','chinese','english','outside','reading'];
+  const learnAvg = Math.round(cats.reduce((s,c)=>s+calcPct(c),0)/cats.length);
+  const todoPct = tasks.todo.length?Math.round(tasks.todo.reduce((s,t)=>s+t.pct,0)/tasks.todo.length):0;
+  const ropePct = Math.min(100,Math.round(ropeCount/1000*100));
+  return Math.round((learnAvg+ropePct+todoPct)/3);
+}
+function calcSchoolAvg(){ const s=['math','chinese','english']; return Math.round(s.reduce((a,c)=>a+calcPct(c),0)/s.length); }
+
+function updateProgress(){
+  const schoolCats=['math','chinese','english'];
+  const allCats=['math','chinese','english','outside','reading'];
+  const pcts={};
+  allCats.forEach(c=>{
+    const p=calcPct(c); pcts[c]=p;
+    const bar=document.getElementById(c+'Bar'); if(bar) bar.style.width=p+'%';
+    const pe=document.getElementById(c+'Pct'); if(pe) pe.textContent=p+'%';
+  });
+  const sa=calcSchoolAvg();
+  document.getElementById('schoolBar').style.width=sa+'%';
+  document.getElementById('schoolPct').textContent=sa+'%';
+  const ov=calcOverall();
+  document.getElementById('overviewBar').style.width=ov+'%';
+  document.getElementById('overviewPct').textContent=ov+'%';
+  const miniBars={overview:ov,school:sa,outside:pcts.outside,reading:pcts.reading,rope:Math.min(100,Math.round(ropeCount/1000*100))};
+  document.querySelectorAll('.nav-item').forEach(item=>{
+    const k=item.dataset.key;
+    if(miniBars[k]!==undefined){ const i=item.querySelector('.mini-bar i'); if(i) i.style.width=miniBars[k]+'%'; }
+  });
+  const ld=allCats.reduce((s,c)=>s+tasks[c].filter(t=>t.done).length,0);
+  const lt=allCats.reduce((s,c)=>s+tasks[c].length,0);
+  document.getElementById('learnNum').textContent=`${ld}/${lt}`;
+  document.getElementById('learnBar').style.width=ov+'%';
+  document.getElementById('learnPct').textContent=ov+'%';
+  const rp=Math.min(100,Math.round(ropeCount/1000*100));
+  document.getElementById('ropeNum').textContent=ropeCount;
+  document.getElementById('ropeBar').style.width=rp+'%';
+  document.getElementById('ropePct').textContent=rp+'%';
+  const rdp=pcts.reading;
+  document.getElementById('readNum').textContent=`${Math.round(rdp*0.2)}/20`;
+  document.getElementById('readBar').style.width=rdp+'%';
+  document.getElementById('readPct').textContent=rdp+'%';
+  checkCoinReward();
+  save();
+}
+
+// ===== 金币系统 =====
+function checkCoinReward(){
+  // 每日周期独立记录
+  if(currentCycle==='daily'){
+    if(!lastCoinEarned.daily && (ropeDone || calcOverall()>=100)){
+      lastCoinEarned.daily=true;
+      addCoin('完成每日目标','daily');
+    }
+  } else if(currentCycle==='weekly'){
+    if(!lastCoinEarned.weekly && calcSchoolAvg()>=100){
+      lastCoinEarned.weekly=true;
+      addCoin('本周校内三科全部完成','weekly');
+    }
+  } else {
+    if(!lastCoinEarned.monthly){
+      const all=['math','chinese','english','outside','reading','todo'];
+      if(all.every(c=>tasks[c].every(t=>t.done))){
+        lastCoinEarned.monthly=true;
+        addCoin('本月所有任务完成','monthly');
+      }
+    }
+  }
+}
+function addCoin(reason, cycle){
+  coins++;
+  coinLog.unshift({type:'earn', amount:1, reason, cycle, time:new Date().toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})});
+  document.getElementById('coinCount').textContent=coins;
+  showCoinFly();
+  save();
+}
+function spendCoin(reason){
+  if(coins<=0) return false;
+  coins--;
+  coinLog.unshift({type:'spend', amount:1, reason, cycle:currentCycle, time:new Date().toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})});
+  document.getElementById('coinCount').textContent=coins;
+  save();
+  return true;
+}
+function showCoinFly(){
+  const el=document.createElement('div');
+  el.className='coin-fly'; el.textContent='🪙 +1';
+  const cd=document.querySelector('.coin-display'); const r=cd.getBoundingClientRect();
+  el.style.left=(r.left+r.width/2-12)+'px'; el.style.top=(r.top+window.scrollY)+'px';
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),1000);
+}
+function openCoinLog(){
+  document.getElementById('logCurrent').textContent=coins;
+  document.getElementById('logTotal').textContent=coinLog.filter(l=>l.type==='earn').reduce((s,l)=>s+l.amount,0);
+  document.getElementById('logSpent').textContent=coinLog.filter(l=>l.type==='spend').reduce((s,l)=>s+l.amount,0);
+  const list=document.getElementById('logList');
+  if(coinLog.length===0){ list.innerHTML='<div style="text-align:center;color:var(--soft);padding:20px;font-size:11px;">暂无记录</div>'; }
+  else{
+    list.innerHTML=coinLog.map(l=>`
+      <div class="log-item">
+        <span class="log-icon">${l.type==='earn'?'🪙':'🎮'}</span>
+        <span class="log-desc">${l.reason}<small>${l.time} · ${l.cycle==='daily'?'每日':l.cycle==='weekly'?'每周':'每月'}</small></span>
+        <span class="log-amt ${l.type==='earn'?'plus':'minus'}">${l.type==='earn'?'+':'-'}${l.amount}</span>
+      </div>
+    `).join('');
+  }
+  openModal('coinLogModal');
+}
+
+// 校内折叠
+function toggleSchool(){ document.getElementById('schoolCard').classList.toggle('expanded'); }
+
+// ===== 任务操作 =====
+function toggleDone(cat, id){
+  const t=tasks[cat].find(x=>x.id===id); if(!t) return;
+  t.done=!t.done;
+  if(t.done){ t.pct=100; }
+  else if(t.pct===100) t.pct=50;
+  renderAll();
+}
+let nextId=100;
+let editingTag='日常';
+
+function addTask(cat){
+  editing={cat,id:0};
+  document.getElementById('editTitle').textContent='新增任务 - '+getCatName(cat);
+  document.getElementById('editName').value='';
+  document.getElementById('editTime').value='';
+  document.getElementById('editPct').value=0;
+  document.getElementById('editFile').value='';
+  document.getElementById('fileName').textContent='';
+  editingTag='日常';
+  renderTagSelector();
+  openModal('editModal');
+}
+function getCatName(cat){
+  const item=navItems.find(i=>i.key===cat);
+  return item?item.name:({todo:'今日待办',next:'次日预备'}[cat]||cat);
+}
+function editTask(cat, id){
+  const t=tasks[cat].find(x=>x.id===id); if(!t) return;
+  editing={cat,id};
+  document.getElementById('editTitle').textContent='编辑任务 - '+getCatName(cat);
+  document.getElementById('editName').value=t.name;
+  document.getElementById('editTime').value=t.time||'';
+  document.getElementById('editPct').value=t.pct;
+  document.getElementById('editFile').value='';
+  document.getElementById('fileName').textContent=t.file?('📎 '+t.file):'';
+  editingTag=t.tag||'日常';
+  renderTagSelector();
+  openModal('editModal');
+}
+function delTask(cat, id){
+  tasks[cat]=tasks[cat].filter(x=>x.id!==id);
+  renderAll();
+}
+function renderTagSelector(){
+  document.getElementById('tagSelector').innerHTML=TAG_OPTIONS.map(tg=>
+    `<span class="${tg.label===editingTag?'selected':''}" style="color:${tg.color};background:${tg.bg};" onclick="editingTag='${tg.label}';renderTagSelector()">${tg.label}</span>`
+  ).join('');
+}
+function onFilePick(e){
+  const f=e.target.files[0];
+  if(f){
+    document.getElementById('fileName').textContent='📎 '+f.name+' ('+(f.size/1024).toFixed(1)+'KB)';
+  }
+}
+function saveEdit(){
+  const name=document.getElementById('editName').value.trim();
+  if(!name){ alert('请输入任务名称'); return; }
+  const time=document.getElementById('editTime').value.trim();
+  const pct=Math.max(0,Math.min(100,parseInt(document.getElementById('editPct').value)||0));
+  const fileInput=document.getElementById('editFile');
+  let fileName='';
+  if(fileInput.files.length>0) fileName=fileInput.files[0].name;
+  if(editing.id===0){
+    if(!tasks[editing.cat]) tasks[editing.cat]=[];
+    tasks[editing.cat].push({id:++nextId,name,time,pct,done:pct===100,file:fileName,tag:editingTag});
+  } else {
+    const t=tasks[editing.cat].find(x=>x.id===editing.id);
+    if(t){ t.name=name; t.time=time; t.pct=pct; t.done=pct===100; t.tag=editingTag; if(fileName) t.file=fileName; }
+  }
+  closeModal('editModal');
+  renderAll();
+}
+
+// ===== 跳绳 =====
+function addRope(n){
+  if(ropeDone) return;
+  ropeCount=Math.min(1000,ropeCount+n);
+  updateRope();
+  if(ropeCount>=1000) completeRope();
+}
+function updateRope(){
+  document.getElementById('ropeCount').textContent=ropeCount;
+  const pct=Math.min(100,Math.round(ropeCount/1000*100));
+  document.getElementById('ropeProgressBar').style.width=pct+'%';
+  updateProgress();
+}
+function completeRope(){
+  if(ropeDone) return;
+  ropeCount=1000; ropeDone=true; updateRope();
+  showEncourage();
+}
+function showEncourage(){
+  const msgs=[
+    {e:'🎉',t:'太棒啦！',d:'跳绳1000个目标完成！坚持运动，身体棒棒！'},
+    {e:'⭐',t:'你是跳绳小达人！',d:'1000个轻松拿下，为你点赞！'},
+    {e:'🏆',t:'冠军就是你！',d:'今日跳绳目标达成，获得1枚金币奖励！'}
+  ];
+  const m=msgs[Math.floor(Math.random()*msgs.length)];
+  document.getElementById('encEmoji').textContent=m.e;
+  document.getElementById('encTitle').textContent=m.t;
+  document.getElementById('encDesc').textContent=m.d;
+  openModal('encourageModal');
+}
+
+// ===== 抓娃娃机 =====
+let gameState='idle';
+let clawX=50;
+let swingInterval=null;
+
+function renderBalls(){
+  const pool=document.getElementById('ballPool');
+  pool.innerHTML='';
+  const pr=rewardPool[currentCycle];
+  const positions=[{l:6,b:4},{l:28,b:2},{l:50,b:6},{l:72,b:3},{l:90,b:5},{l:16,b:24},{l:38,b:22},{l:60,b:26},{l:82,b:24},{l:10,b:46},{l:48,b:48},{l:78,b:46}];
+  pr.forEach((b,i)=>{
+    const pos=positions[i%positions.length];
+    const el=document.createElement('div');
+    el.className='ball';
+    el.style.left=pos.l+'%'; el.style.bottom=pos.b+'px'; el.style.background=b.color;
+    pool.appendChild(el);
+  });
+}
+function setCycle(cycle, btn){
+  currentCycle=cycle;
+  document.querySelectorAll('.cycle-switch button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const goals={daily:'完成每日目标获得1金币',weekly:'本周校内三科全部完成获得1金币',monthly:'本月所有任务全部完成获得1金币'};
+  document.getElementById('cycleInfo').innerHTML=goals[cycle]+' · <span class="reward-edit" onclick="openRewardEdit()">编辑奖励池</span>';
+  renderBalls();
+  checkCoinReward();
+}
+
+function onGo(){
+  if(gameState!=='idle') return;
+  if(coins<=0){
+    const tip={daily:'完成每日学习或跳绳目标','weekly':'本周校内三科全部完成','monthly':'本月所有任务完成'}[currentCycle];
+    alert('没有金币啦！'+tip+'即可获得金币~');
+    return;
+  }
+  if(!spendCoin('投币抓娃娃')) return;
+  gameState='ready';
+  document.getElementById('shakeOverlay').classList.remove('hidden');
+  document.getElementById('btnGo').disabled=true;
+  document.getElementById('btnGo').classList.add('arming');
+  setTimeout(()=>{
+    document.getElementById('shakeOverlay').classList.add('hidden');
+    startPlaying();
+  },1200);
+}
+
+function startPlaying(){
+  gameState='playing';
+  document.getElementById('btnGo').classList.remove('arming');
+  document.getElementById('btnGo').textContent='运行中';
+  document.getElementById('leverWrap').classList.remove('disabled');
+  // 爪子自动多角度摇摆
+  const arm=document.getElementById('clawArm');
+  arm.classList.add('swinging');
+  // 球池晃动
+  document.getElementById('ballPool').classList.add('shaking');
+  document.querySelectorAll('.ball').forEach(b=>b.classList.add('wobble'));
+}
+
+function onLever(){
+  if(gameState!=='playing') return;
+  gameState='dropping';
+  document.getElementById('leverWrap').classList.add('pulled','disabled');
+  // 停止摇摆，获取当前位置
+  const arm=document.getElementById('clawArm');
+  const computedLeft=window.getComputedStyle(arm).left;
+  arm.classList.remove('swinging');
+  arm.style.left=computedLeft;
+  document.getElementById('ballPool').classList.remove('shaking');
+  document.querySelectorAll('.ball').forEach(b=>b.classList.remove('wobble'));
+  setTimeout(()=>{
+    arm.classList.add('dropping');
+    setTimeout(grabBall,650);
+  },100);
+}
+
+function grabBall(){
+  const arm=document.getElementById('clawArm');
+  const armRect=arm.getBoundingClientRect();
+  const armX=armRect.left+armRect.width/2;
+  let target=-1,minDist=999;
+  document.querySelectorAll('.ball').forEach((el,i)=>{
+    const r=el.getBoundingClientRect();
+    const dist=Math.abs(armX-(r.left+r.width/2));
+    if(dist<minDist){ minDist=dist; target=i; }
+  });
+  const pr=rewardPool[currentCycle];
+  if(target>=0 && minDist<50){
+    const ball=pr[target%pr.length];
+    document.getElementById('rewardBall').textContent=ball.text;
+    document.getElementById('rewardBall').style.background=ball.color;
+    document.getElementById('rewardDesc').textContent='恭喜抓到：「'+ball.text.replace(/\n/g,'')+'」';
+    const ballEls=document.querySelectorAll('.ball');
+    if(ballEls[target]) ballEls[target].style.opacity='0';
+  } else {
+    document.getElementById('rewardBall').textContent='差一点';
+    document.getElementById('rewardBall').style.background='#ccc';
+    document.getElementById('rewardDesc').textContent='就差一点点，再投币试一次吧！';
+  }
+  openModal('rewardModal');
+  setTimeout(resetMachine,1500);
+}
+
+function resetMachine(){
+  const arm=document.getElementById('clawArm');
+  arm.classList.remove('dropping');
+  arm.style.left='50%';
+  document.getElementById('leverWrap').classList.remove('pulled');
+  document.getElementById('btnGo').disabled=false;
+  document.getElementById('btnGo').textContent='GO';
+  gameState='idle';
+  renderBalls();
+}
+
+// 奖励池编辑
+function openRewardEdit(){
+  tempRewards=rewardPool[currentCycle].map(r=>({...r}));
+  renderRewardEditList();
+  document.getElementById('rewardEditCycle').textContent={daily:'每日',weekly:'每周',monthly:'每月'}[currentCycle];
+  openModal('rewardEditModal');
+}
+function renderRewardEditList(){
+  document.getElementById('rewardEditList').innerHTML=tempRewards.map((r,i)=>
+    `<div class="reward-edit-item"><div class="color-dot" style="background:${r.color}"></div><input type="text" value="${r.text.replace(/\n/g,' ')}" onchange="tempRewards[${i}].text=this.value" placeholder="输入奖励内容"><button class="btn btn-del" onclick="tempRewards.splice(${i},1);renderRewardEditList()" style="font-size:10px;padding:3px 6px;">删</button></div>`
+  ).join('');
+}
+function addRewardItem(){
+  const color=BALL_COLORS[tempRewards.length%BALL_COLORS.length];
+  tempRewards.push({text:'新奖励',color});
+  renderRewardEditList();
+}
+function saveRewards(){
+  tempRewards.forEach(r=>{ if(r.text.length>5&&!r.text.includes('\n')){ r.text=r.text.slice(0,Math.ceil(r.text.length/2))+'\n'+r.text.slice(Math.ceil(r.text.length/2)); } });
+  rewardPool[currentCycle]=tempRewards;
+  closeModal('rewardEditModal'); save(); renderBalls();
+}
+
+// 弹窗
+function openModal(id){ document.getElementById(id).classList.add('show'); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+
+// 日期
+function updateDateTime(){
+  const now=new Date();
+  const m=now.getMonth()+1,d=now.getDate();
+  const ws=['周日','周一','周二','周三','周四','周五','周六'];
+  const y=now.getFullYear();
+  document.getElementById('dateDay').textContent=`${m}月${d}日`;
+  document.getElementById('dateSub').textContent=`${ws[now.getDay()]} ｜ ${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  document.getElementById('timeLabel').textContent=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+}
+
+// ===== 工作台标题持久化 =====
+function loadTitle(){
+  const saved = localStorage.getItem('pcw_title');
+  if(saved){
+    document.getElementById('workbenchTitle').textContent = saved;
+    document.title = saved;
+  }
+}
+document.getElementById('workbenchTitle').addEventListener('blur', function(){
+  let v = this.textContent.trim();
+  if(!v) v = this.dataset.default || '我的工作台';
+  this.textContent = v;
+  localStorage.setItem('pcw_title', v);
+  document.title = v;
+  // 同步更新 apple-mobile-web-app-title
+  let meta = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+  if(meta) meta.setAttribute('content', v);
+});
+
+// ===== 初始化 =====
+load();
+loadTitle();
+updateDateTime();
+setInterval(updateDateTime,60000);
+const dq=getDailyQuote();
+document.getElementById('quoteText').textContent=dq.text;
+document.getElementById('quoteTag').textContent=dq.tag;
+renderNav();
+renderBalls();
+renderAll();
+</script>
+</body>
+</html>
