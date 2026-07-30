@@ -48,9 +48,13 @@
   .ic{ display:inline-block; background:#1a1816;}
   .ic-sig{ width:16px; height:11px; -webkit-mask:radial-gradient(circle,#000 50%,transparent 50%) 0 0/3px 3px; mask:radial-gradient(circle,#000 50%,transparent 50%) 0 0/3px 3px;}
   .ic-wifi{ width:14px; height:10px; border:2px solid #1a1816; border-bottom:none; border-radius:3px 3px 0 0; background:none;}
-  .ic-bat{ width:24px; height:11px; border:1.5px solid #1a1816; border-radius:3px; position:relative; background:none;}
-  .ic-bat::after{ content:""; position:absolute; right:-3px; top:3px; width:2px; height:5px; background:#1a1816; border-radius:0 1px 1px 0;}
-  .ic-bat .fill{ position:absolute; left:1px; top:1px; bottom:1px; width:60%; background:#E26A6A; border-radius:1px;}
+  .status-bar{ display:flex; align-items:center; gap:8px; padding-top:14px; padding-bottom:6px; font-size:15px; font-weight:600; color:#1a1816;}
+  .status-bar #batteryIcon{ width:24px; height:11px; border:1.5px solid #1a1816; border-radius:3px; position:relative; background:none;}
+  .status-bar #batteryIcon::after{ content:""; position:absolute; right:-3px; top:3px; width:2px; height:5px; background:#1a1816; border-radius:0 1px 1px 0;}
+  .status-bar #batteryIcon .fill{ position:absolute; left:1px; top:1px; bottom:1px; width:60%; background:currentColor; border-radius:1px;}
+  .status-bar #batteryIcon.low .fill{ color:#E26A6A;}
+  .status-bar #batteryIcon.normal .fill{ color:#1a1816;}
+  .status-bar #batteryIcon.charging .fill{ color:#88B97A;}
   .top-bar{ display:flex; align-items:center; justify-content:space-between; padding:6px 22px 12px;}
   .top-bar .home{ font-size:22px; color:#2C2823;}
   .top-bar .title{ font-size:17px; font-weight:600; color:#1f1d1a; cursor:pointer; padding:2px 8px; border-radius:8px; transition:background .2s; outline:none;}
@@ -427,7 +431,7 @@
     <div class="right">
       <span class="ic ic-sig"></span>
       <span class="ic-wifi"></span>
-      <span class="ic-bat"><span class="fill"></span></span>
+      <span id="batteryIcon"><span class="fill"></span></span>
     </div>
   </div>
   <div class="top-bar">
@@ -1404,6 +1408,34 @@ function updateDateTime(){
   document.getElementById('timeLabel').textContent=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
 }
 
+// ===== 电池状态实时同步 =====
+function updateBattery(){
+  const icon = document.getElementById('batteryIcon');
+  const fill = icon.querySelector('.fill');
+  if(navigator.getBattery){
+    navigator.getBattery().then(bat=>{
+      const apply = ()=>{
+        const pct = Math.round(bat.level * 100);
+        fill.style.width = pct + '%';
+        icon.classList.remove('low','normal','charging');
+        if(bat.charging){
+          icon.classList.add('charging');
+        } else if(pct < 20){
+          icon.classList.add('low');
+        } else {
+          icon.classList.add('normal');
+        }
+      };
+      apply();
+      bat.addEventListener('levelchange', apply);
+      bat.addEventListener('chargingchange', apply);
+    });
+  } else {
+    // 不支持则用纯黑填充
+    icon.classList.add('normal');
+  }
+}
+
 // ===== 工作台标题持久化 =====
 function loadTitle(){
   const saved = localStorage.getItem('pcw_title');
@@ -1657,6 +1689,7 @@ load();
 loadTitle();
 updateDateTime();
 setInterval(updateDateTime,60000);
+updateBattery();
 const dq=getDailyQuote();
 document.getElementById('quoteText').textContent=dq.text;
 document.getElementById('quoteTag').textContent=dq.tag;
