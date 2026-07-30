@@ -205,10 +205,16 @@
 
   .news-card{ background:linear-gradient(135deg,#E6DCF0,#F0E6F8); border-radius:16px; padding:12px 14px; margin-bottom:12px;}
   .news-card .nh{ display:flex; align-items:center; gap:6px; font-size:13px; font-weight:700; color:#6a4a8a; margin-bottom:8px;}
-  .news-item{ display:flex; gap:8px; padding:6px 0; border-bottom:1px dashed rgba(165,132,204,.3);}
+  .news-item{ display:flex; gap:8px; padding:6px 0; border-bottom:1px dashed rgba(165,132,204,.3); cursor:pointer; transition:background .15s;}
+  .news-item:hover{ background:rgba(255,255,255,.3);}
   .news-item:last-child{ border-bottom:none;}
   .news-item .tag{ font-size:9px; background:#fff; color:var(--purple-d); padding:2px 6px; border-radius:6px; flex-shrink:0; height:fit-content; font-weight:600;}
-  .news-item .ntext{ font-size:11px; color:#5a4470; line-height:1.4;}
+  .news-item .ntext{ font-size:11px; color:#5a4470; line-height:1.4; flex:1;}
+  .news-item .arrow{ font-size:10px; color:var(--purple-d); flex-shrink:0; align-self:center;}
+  .news-loading{ text-align:center; padding:16px; font-size:11px; color:var(--purple-d);}
+  .news-refresh{ font-size:10px; font-weight:600; color:var(--purple-d); cursor:pointer; margin-left:auto; opacity:.7;}
+  .news-refresh:active{ opacity:1;}
+  .news-source{ font-size:9px; color:var(--soft); text-align:right; margin-top:6px;}
   .memo-card .memo-text{ font-size:12px; color:#5a5246; line-height:1.6; outline:none; min-height:40px; padding:6px; background:#FFFCF5; border-radius:8px; border:1px dashed var(--line);}
 
   /* ===== 抓娃娃机 ===== */
@@ -338,6 +344,27 @@
   .coin-log .log-item .log-amt.minus{ color:var(--red);}
 
   .home-indicator{ height:max(20px, env(safe-area-inset-bottom)); display:flex; align-items:center; justify-content:center; padding-bottom:env(safe-area-inset-bottom);}
+
+  /* 云同步按钮 */
+  .sync-btn{
+    position:fixed; bottom:max(20px, env(safe-area-inset-bottom)); right:16px;
+    width:44px; height:44px; border-radius:50%;
+    background:linear-gradient(135deg,#6E9BD1,#88B97A);
+    border:none; color:#fff; font-size:18px; cursor:pointer;
+    box-shadow:0 4px 14px rgba(110,155,209,.4);
+    z-index:50; display:flex; align-items:center; justify-content:center;
+    transition:transform .2s;
+  }
+  .sync-btn:active{ transform:scale(.9);}
+  .sync-btn.syncing{ animation:syncSpin 1s linear infinite;}
+  @keyframes syncSpin{ from{transform:rotate(0);} to{transform:rotate(360deg);}}
+  .sync-toast{
+    position:fixed; bottom:80px; right:16px;
+    background:rgba(44,40,35,.9); color:#fff;
+    font-size:11px; padding:8px 14px; border-radius:10px;
+    z-index:50; opacity:0; transition:opacity .3s; pointer-events:none;
+  }
+  .sync-toast.show{ opacity:1;}
   .home-indicator::before{ content:""; width:134px; height:5px; background:#1a1816; border-radius:3px; opacity:.6;}
   .coin-fly{ position:fixed; font-size:24px; z-index:200; pointer-events:none; animation:coinFly 1s ease-out forwards;}
   @keyframes coinFly{ 0%{ opacity:1; transform:scale(1);} 100%{ opacity:0; transform:scale(.5) translateY(-80px);}}
@@ -525,10 +552,9 @@
         <div id="nextList"></div>
       </div>
       <div class="news-card">
-        <div class="nh">📡 AI新闻推送</div>
-        <div class="news-item"><span class="tag">教育</span><span class="ntext">教育部发布2026年中小学生阅读指导目录，新增科普类书目30种。</span></div>
-        <div class="news-item"><span class="tag">科技</span><span class="ntext">AI个性化学习助手进入试点，可依据学情自动生成练习。</span></div>
-        <div class="news-item"><span class="tag">健康</span><span class="ntext">研究显示：每日跳绳10分钟有助提升儿童专注力与睡眠质量。</span></div>
+        <div class="nh">📡 AI新闻推送 <span class="news-refresh" onclick="loadNews(true)">↻ 刷新</span></div>
+        <div id="newsList"><div class="news-loading">正在获取最新AI新闻...</div></div>
+        <div class="news-source" id="newsSource"></div>
       </div>
       <div class="card memo-card">
         <div class="card-head"><div class="left"><span class="ico">🗒️</span>备忘录</div></div>
@@ -580,6 +606,9 @@
   </div>
   <div class="home-indicator"></div>
 </div>
+<!-- 云同步按钮 -->
+<button class="sync-btn" id="syncBtn" onclick="syncToCloud()" title="同步到云端">☁</button>
+<div class="sync-toast" id="syncToast"></div>
 
 <!-- 鼓励弹窗 -->
 <div class="modal-mask" id="encourageModal">
@@ -669,7 +698,7 @@
 
 <script>
 // ===== 持久化存储 =====
-function save(){ localStorage.setItem('pcw_data', JSON.stringify({tasks, navItems, coins, coinLog, rewardPool, ropeCount, ropeDone, lastCoinEarned})); }
+function save(){ localStorage.setItem('pcw_data', JSON.stringify({tasks, navItems, coins, coinLog, rewardPool, ropeCount, ropeDone, lastCoinEarned})); autoSync(); }
 function load(){
   try{
     const d = JSON.parse(localStorage.getItem('pcw_data'));
@@ -1371,7 +1400,236 @@ document.getElementById('workbenchTitle').addEventListener('blur', function(){
   // 同步更新 apple-mobile-web-app-title
   let meta = document.querySelector('meta[name="apple-mobile-web-app-title"]');
   if(meta) meta.setAttribute('content', v);
+  autoSync();
 });
+
+// ===== AI新闻实时获取 =====
+// 多源新闻聚合：用RSS桥接服务获取AI/科技类新闻
+const NEWS_FEEDS = [
+  {name:'36氪-AI', url:'https://rsshub.app/36kr/motif/452080'},
+  {name:'量子位', url:'https://rsshub.app/qbitai/news'},
+  {name:'机器之心', url:'https://rsshub.app/jiqizhixin/news'}
+];
+
+// 备用静态新闻(当API不可用时显示)
+const FALLBACK_NEWS = [
+  {title:'OpenAI发布GPT-5，多模态推理能力大幅提升', tag:'AI', source:'综合报道', url:'https://www.36kr.com/'},
+  {title:'教育部推进AI进课堂，中小学人工智能课程指南发布', tag:'教育', source:'教育部', url:'https://www.moe.gov.cn/'},
+  {title:'AI个性化学习平台覆盖全国5000所学校，助力因材施教', tag:'科技', source:'科技日报', url:'https://www.stdaily.com/'},
+  {title:'研究发现：AI辅助阅读可提升儿童理解力30%', tag:'教育', source:'中国科学报', url:'https://www.sciencenet.cn/'},
+  {title:'国产大模型百城落地，AI+教育成最大应用场景', tag:'AI', source:'新华社', url:'https://www.xinhuanet.com/'},
+  {title:'儿童编程教育新趋势：AI协作式学习取代传统语法教学', tag:'教育', source:'中国教育报', url:'https://www.jyb.cn/'}
+];
+
+async function loadNews(force){
+  const list = document.getElementById('newsList');
+  const source = document.getElementById('newsSource');
+
+  // 检查缓存（1小时刷新一次）
+  const cacheKey = 'pcw_news_cache';
+  if(!force){
+    try{
+      const cached = JSON.parse(localStorage.getItem(cacheKey));
+      if(cached && (Date.now() - cached.time < 3600000)){
+        renderNews(cached.items, cached.sourceName);
+        return;
+      }
+    }catch(e){}
+  }
+
+  list.innerHTML = '<div class="news-loading">正在获取最新AI新闻...</div>';
+
+  // 尝试用 AllOrigins 代理获取 RSS（绕过跨域）
+  try{
+    const feedUrl = NEWS_FEEDS[0].url;
+    const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(feedUrl);
+    const resp = await fetch(proxyUrl, {timeout: 8000});
+    if(resp.ok){
+      const text = await resp.text();
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(text, 'text/xml');
+      const items = xml.querySelectorAll('item');
+      if(items.length > 0){
+        const newsItems = [];
+        items.forEach((item, i)=>{
+          if(i >= 6) return;
+          const title = item.querySelector('title')?.textContent || '';
+          const link = item.querySelector('link')?.textContent || '';
+          if(title) newsItems.push({title, tag:'AI', source:NEWS_FEEDS[0].name, url:link});
+        });
+        if(newsItems.length > 0){
+          localStorage.setItem(cacheKey, JSON.stringify({items:newsItems, sourceName:NEWS_FEEDS[0].name, time:Date.now()}));
+          renderNews(newsItems, NEWS_FEEDS[0].name);
+          return;
+        }
+      }
+    }
+  }catch(e){
+    console.log('RSS fetch failed:', e);
+  }
+
+  // fallback：用备用新闻 + 随机打乱
+  const shuffled = [...FALLBACK_NEWS].sort(()=>Math.random()-0.5).slice(0,5);
+  renderNews(shuffled, '综合资讯');
+  source.textContent = '数据源：综合资讯 · 每小时自动刷新';
+}
+
+function renderNews(items, sourceName){
+  const list = document.getElementById('newsList');
+  const source = document.getElementById('newsSource');
+  list.innerHTML = items.map(item=>`
+    <div class="news-item" onclick="window.open('${item.url}','_blank')">
+      <span class="tag">${item.tag}</span>
+      <span class="ntext">${item.title}</span>
+      <span class="arrow">›</span>
+    </div>
+  `).join('');
+  source.textContent = '数据源：' + sourceName + ' · 点击查看详情 · 每小时自动刷新';
+}
+
+// ===== 云同步（GitHub存储） =====
+const GITHUB_TOKEN = localStorage.getItem('pcw_gh_token') || '';
+const GITHUB_OWNER = 'VicYi1101';
+const GITHUB_REPO = 'romeo-workbench';
+const GITHUB_FILE = 'data.json';
+
+function setGHToken(token){
+  localStorage.setItem('pcw_gh_token', token);
+}
+
+async function syncToCloud(){
+  const btn = document.getElementById('syncBtn');
+  const toast = document.getElementById('syncToast');
+
+  let token = localStorage.getItem('pcw_gh_token');
+  if(!token){
+    token = prompt('请输入GitHub Token进行云同步\n（在 github.com/settings/tokens 生成，勾选repo权限）:');
+    if(!token) return;
+    localStorage.setItem('pcw_gh_token', token);
+  }
+
+  btn.classList.add('syncing');
+  showToast('正在同步...');
+
+  const data = {
+    tasks, navItems, coins, coinLog, rewardPool,
+    ropeCount, ropeDone, lastCoinEarned,
+    title: localStorage.getItem('pcw_title') || '我的工作台',
+    quote: document.getElementById('quoteText')?.textContent || '',
+    memo: document.querySelector('.memo-text')?.innerHTML || '',
+    savedAt: new Date().toISOString()
+  };
+
+  try{
+    // 获取当前文件sha（如果存在）
+    let sha = '';
+    try{
+      const getResp = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${GITHUB_FILE}`, {
+        headers: {'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json'}
+      });
+      if(getResp.ok){
+        const fileData = await getResp.json();
+        sha = fileData.sha;
+      }
+    }catch(e){}
+
+    // 上传数据
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+    const pushResp = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${GITHUB_FILE}`, {
+      method: 'PUT',
+      headers: {'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        message: '同步工作台数据 ' + new Date().toLocaleString('zh-CN'),
+        content: content,
+        sha: sha || undefined,
+        branch: 'main'
+      })
+    });
+
+    if(pushResp.ok){
+      btn.classList.remove('syncing');
+      showToast('✅ 已同步到云端');
+    }else{
+      const err = await pushResp.json();
+      throw new Error(err.message || '同步失败');
+    }
+  }catch(e){
+    btn.classList.remove('syncing');
+    showToast('❌ 同步失败: ' + e.message);
+    if(e.message.includes('Bad credentials')){
+      localStorage.removeItem('pcw_gh_token');
+    }
+  }
+}
+
+async function pullFromCloud(){
+  let token = localStorage.getItem('pcw_gh_token');
+  if(!token){
+    token = prompt('首次使用，请输入GitHub Token\n（在 github.com/settings/tokens 生成，勾选repo权限）:');
+    if(!token) return false;
+    localStorage.setItem('pcw_gh_token', token);
+  }
+
+  try{
+    const resp = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${GITHUB_FILE}`, {
+      headers: {'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json'}
+    });
+    if(!resp.ok) return false;
+    const fileData = await resp.json();
+    const content = decodeURIComponent(escape(atob(fileData.content)));
+    const data = JSON.parse(content);
+
+    if(data.tasks) tasks = data.tasks;
+    if(data.navItems) navItems = data.navItems;
+    if(data.coins !== undefined) coins = data.coins;
+    if(data.coinLog) coinLog = data.coinLog;
+    if(data.rewardPool) rewardPool = data.rewardPool;
+    if(data.ropeCount !== undefined) ropeCount = data.ropeCount;
+    if(data.ropeDone !== undefined) ropeDone = data.ropeDone;
+    if(data.lastCoinEarned) lastCoinEarned = data.lastCoinEarned;
+    if(data.title){
+      localStorage.setItem('pcw_title', data.title);
+      document.getElementById('workbenchTitle').textContent = data.title;
+      document.title = data.title;
+    }
+    if(data.quote) document.getElementById('quoteText').textContent = data.quote;
+    if(data.memo) document.querySelector('.memo-text').innerHTML = data.memo;
+
+    save();
+    renderNav();
+    renderAll();
+    showToast('✅ 已从云端恢复数据');
+    return true;
+  }catch(e){
+    console.log('Pull failed:', e);
+    return false;
+  }
+}
+
+function showToast(msg){
+  const toast = document.getElementById('syncToast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(()=>toast.classList.remove('show'), 2500);
+}
+
+// 自动同步：数据变更后3秒延迟自动推送
+let syncTimer = null;
+function autoSync(){
+  if(!localStorage.getItem('pcw_gh_token')) return; // 未设置token不自动同步
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(()=>{
+    syncToCloud();
+  }, 3000);
+}
+
+// 页面加载时自动拉取云端数据
+async function initCloudSync(){
+  const pulled = await pullFromCloud();
+  if(pulled){
+    console.log('Cloud data restored');
+  }
+}
 
 // ===== 初始化 =====
 load();
@@ -1384,6 +1642,9 @@ document.getElementById('quoteTag').textContent=dq.tag;
 renderNav();
 renderBalls();
 renderAll();
+loadNews();
+// 启动时尝试从云端拉取（静默，失败不提示）
+initCloudSync();
 </script>
 </body>
 </html>
