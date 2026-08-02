@@ -184,8 +184,10 @@
   .rope-card .rcount small{ font-size:12px; color:#C9A647; font-weight:600;}
   .rope-card .rbar{ height:10px; background:rgba(255,255,255,.6); border-radius:6px; overflow:hidden; margin:8px 0 6px;}
   .rope-card .rbar i{ display:block; height:100%; background:linear-gradient(90deg,#F5B26B,#E89B4E); border-radius:6px; transition:width .5s;}
-  .rope-card .ract{ display:flex; justify-content:center; gap:8px; margin-top:8px;}
+  .rope-card .ract{ display:flex; justify-content:center; gap:8px; margin-top:8px; flex-wrap:wrap;}
   .rope-card .ract .btn-do{ background:#E89B4E; color:#fff; padding:6px 18px; font-size:12px; border-radius:14px; font-weight:600; border:none; cursor:pointer;}
+  .sport-cfg-btn{ background:none; border:1px solid rgba(201,166,71,.4); color:#C9A647; font-size:10px; padding:3px 10px; border-radius:10px; cursor:pointer; font-weight:600;}
+  .sport-cfg-btn:active{ background:rgba(201,166,71,.15);}
 
   .news-card{ background:linear-gradient(135deg,#E6DCF0,#F0E6F8); border-radius:16px; padding:12px 14px; margin-bottom:12px;}
   .news-card .nh{ display:flex; align-items:center; gap:6px; font-size:13px; font-weight:700; color:#6a4a8a; margin-bottom:8px;}
@@ -438,7 +440,7 @@
         </div>
         <div class="stat-card blue">
           <div class="num b" id="ropeNum">0</div>
-          <div class="label">跳绳/1000</div>
+          <div class="label" id="ropeLabel">跳绳/1000</div>
           <div class="pbar"><i id="ropeBar" style="width:0%"></i></div>
           <div class="pct" id="ropePct">0%</div>
         </div>
@@ -495,15 +497,16 @@
       <div id="dynamicCards"></div>
       <div class="rope-card" id="ropeCard">
         <div class="rh">
-          <div class="t"><span>🤸</span>跳绳运动打卡</div>
-          <span class="goal">目标 1000 个</span>
+          <div class="t"><span id="sportEmoji">🤸</span><span id="sportName">跳绳运动打卡</span></div>
+          <span class="goal" id="sportGoal">目标 1000 个</span>
         </div>
-        <div class="rcount"><span id="ropeCount">0</span><small> / 1000</small></div>
+        <div class="rcount"><span id="ropeCount">0</span><small id="sportTargetText"> / 1000</small></div>
         <div class="rbar"><i id="ropeProgressBar" style="width:0%"></i></div>
-        <div class="ract">
-          <button class="btn-do" onclick="addRope(100)">+100</button>
-          <button class="btn-do" onclick="addRope(200)" style="background:#F5B26B">+200</button>
-          <button class="btn-do" onclick="completeRope()" style="background:#88B97A">一键完成</button>
+        <div class="ract" id="sportBtns">
+          <!-- 按钮由 JS 动态生成 -->
+        </div>
+        <div style="text-align:right;margin-top:6px;">
+          <button class="sport-cfg-btn" onclick="openSportConfig()">⚙ 设置</button>
         </div>
       </div>
       <div class="card">
@@ -673,10 +676,32 @@
     <button class="btn-ok" onclick="closeModal('coinLogModal')" style="width:100%;">关闭</button>
   </div>
 </div>
+<!-- 运动打卡设置弹窗 -->
+<div class="modal-mask" id="sportCfgModal">
+  <div class="modal edit-modal" style="width:300px;">
+    <div class="title">运动打卡设置</div>
+    <label>项目名称</label>
+    <input type="text" id="sportCfgName" placeholder="如：跳绳/仰卧起坐/跑步">
+    <label>Emoji 图标</label>
+    <div class="emoji-picker" id="sportEmojiPicker"></div>
+    <label>单位（个/米/分钟等）</label>
+    <input type="text" id="sportCfgUnit" placeholder="个">
+    <label>每日目标数量</label>
+    <input type="number" id="sportCfgTarget" placeholder="1000" min="1">
+    <label>快捷按钮（用逗号分隔，如 100,200,500）</label>
+    <input type="text" id="sportCfgSteps" placeholder="100,200">
+    <label>主题色</label>
+    <div class="color-picker" id="sportColorPicker"></div>
+    <div class="row">
+      <button class="btn-c btn-cancel" onclick="closeModal('sportCfgModal')">取消</button>
+      <button class="btn-c btn-save" onclick="saveSportConfig()">保存</button>
+    </div>
+  </div>
+</div>
 
 <script>
 // ===== 持久化存储 =====
-function save(){ localStorage.setItem('pcw_data', JSON.stringify({tasks, navItems, coins, coinLog, rewardPool, ropeCount, ropeDone, lastCoinEarned})); autoSync(); }
+function save(){ localStorage.setItem('pcw_data', JSON.stringify({tasks, navItems, coins, coinLog, rewardPool, ropeCount, ropeDone, lastCoinEarned, sportConfig})); autoSync(); }
 function load(){
   try{
     const d = JSON.parse(localStorage.getItem('pcw_data'));
@@ -689,6 +714,7 @@ function load(){
       if(d.ropeCount !== undefined) ropeCount = d.ropeCount;
       if(d.ropeDone !== undefined) ropeDone = d.ropeDone;
       if(d.lastCoinEarned) lastCoinEarned = d.lastCoinEarned;
+      if(d.sportConfig) sportConfig = Object.assign(sportConfig, d.sportConfig);
     }
   }catch(e){}
 }
@@ -734,6 +760,15 @@ let navItems = [
 ];
 
 let ropeCount = 0, ropeDone = false;
+// 运动打卡可配置项（兼容旧数据：默认跳绳/1000个）
+let sportConfig = {
+  name: '跳绳运动打卡',
+  emoji: '🤸',
+  unit: '个',
+  target: 1000,
+  steps: [100, 200],
+  color: '#E89B4E'
+};
 let editing = {cat:'', id:0};
 let coins = 0;
 let coinLog = [];
@@ -832,7 +867,7 @@ let currentNavKey = 'overview';
 function getNavPct(item){
   if(item.key==='overview') return calcOverall();
   if(item.key==='school') return calcSchoolAvg();
-  if(item.key==='rope') return Math.min(100,Math.round(ropeCount/1000*100));
+  if(item.key==='rope') return getSportPct();
   if(tasks[item.key]) return calcPct(item.key);
   return 0;
 }
@@ -1016,7 +1051,7 @@ function calcOverall(){
   const cats = ['math','chinese','english','outside','reading'];
   const learnAvg = Math.round(cats.reduce((s,c)=>s+calcPct(c),0)/cats.length);
   const todoPct = tasks.todo.length?Math.round(tasks.todo.reduce((s,t)=>s+t.pct,0)/tasks.todo.length):0;
-  const ropePct = Math.min(100,Math.round(ropeCount/1000*100));
+  const ropePct = getSportPct();
   return Math.round((learnAvg+ropePct+todoPct)/3);
 }
 function calcSchoolAvg(){ const s=['math','chinese','english']; return Math.round(s.reduce((a,c)=>a+calcPct(c),0)/s.length); }
@@ -1036,7 +1071,7 @@ function updateProgress(){
   const ov=calcOverall();
   document.getElementById('overviewBar').style.width=ov+'%';
   document.getElementById('overviewPct').textContent=ov+'%';
-  const miniBars={overview:ov,school:sa,outside:pcts.outside,reading:pcts.reading,rope:Math.min(100,Math.round(ropeCount/1000*100))};
+  const miniBars={overview:ov,school:sa,outside:pcts.outside,reading:pcts.reading,rope:getSportPct()};
   document.querySelectorAll('.nav-item').forEach(item=>{
     const k=item.dataset.key;
     if(miniBars[k]!==undefined){ const i=item.querySelector('.mini-bar i'); if(i) i.style.width=miniBars[k]+'%'; }
@@ -1046,7 +1081,7 @@ function updateProgress(){
   document.getElementById('learnNum').textContent=`${ld}/${lt}`;
   document.getElementById('learnBar').style.width=ov+'%';
   document.getElementById('learnPct').textContent=ov+'%';
-  const rp=Math.min(100,Math.round(ropeCount/1000*100));
+  const rp=getSportPct();
   document.getElementById('ropeNum').textContent=ropeCount;
   document.getElementById('ropeBar').style.width=rp+'%';
   document.getElementById('ropePct').textContent=rp+'%';
@@ -1199,35 +1234,129 @@ function saveEdit(){
   renderAll();
 }
 
-// ===== 跳绳 =====
+// ===== 运动打卡（可配置） =====
+const SPORT_EMOJIS = ['🤸','🏃','⚽','🏀','🏊','🚴','🤾','🏐','🏓','🏸','🧘','💪','⭐','🏆'];
+const SPORT_COLORS = ['#E89B4E','#88B97A','#6E9BD1','#F5A8A8','#C9A647','#A584CC','#F5B26B','#9BC0E8','#E26A6A','#6A9E5E'];
+let sportCfgEditing = {emoji:'', color:''};
+
+function renderSportUI(){
+  // 更新卡片显示
+  const nameEl = document.getElementById('sportName');
+  const emojiEl = document.getElementById('sportEmoji');
+  const goalEl = document.getElementById('sportGoal');
+  const targetTextEl = document.getElementById('sportTargetText');
+  if(nameEl) nameEl.textContent = sportConfig.name;
+  if(emojiEl) emojiEl.textContent = sportConfig.emoji;
+  if(goalEl) goalEl.textContent = `目标 ${sportConfig.target} ${sportConfig.unit}`;
+  if(targetTextEl) targetTextEl.textContent = ` / ${sportConfig.target}`;
+  // 动态生成按钮
+  const btnBox = document.getElementById('sportBtns');
+  if(btnBox){
+    const btnColors = ['#E89B4E','#F5B26B','#D89860','#C9874C'];
+    btnBox.innerHTML = sportConfig.steps.map((s,i)=>
+      `<button class="btn-do" onclick="addRope(${s})" style="background:${btnColors[i%btnColors.length]}">+${s}</button>`
+    ).join('') + `<button class="btn-do" onclick="completeRope()" style="background:#88B97A">一键完成</button>`;
+  }
+  // 同步侧栏导航项的名称和 emoji
+  const ropeNav = navItems.find(n=>n.key==='rope');
+  if(ropeNav){
+    ropeNav.name = sportConfig.name.replace('运动打卡','').trim() || sportConfig.name;
+    ropeNav.emoji = sportConfig.emoji;
+    ropeNav.color = sportConfig.color;
+  }
+  // 同步统计卡片标签
+  const ropeLabel = document.getElementById('ropeLabel');
+  if(ropeLabel) ropeLabel.textContent = `${sportConfig.name.replace('运动打卡','').trim() || '运动'}/${sportConfig.target}`;
+}
+
+function getSportPct(){
+  return Math.min(100, Math.round(ropeCount / sportConfig.target * 100));
+}
+
 function addRope(n){
   if(ropeDone) return;
-  ropeCount=Math.min(1000,ropeCount+n);
+  ropeCount = Math.min(sportConfig.target, ropeCount + n);
   updateRope();
-  if(ropeCount>=1000) completeRope();
+  if(ropeCount >= sportConfig.target) completeRope();
 }
 function updateRope(){
-  document.getElementById('ropeCount').textContent=ropeCount;
-  const pct=Math.min(100,Math.round(ropeCount/1000*100));
-  document.getElementById('ropeProgressBar').style.width=pct+'%';
+  const countEl = document.getElementById('ropeCount');
+  if(countEl) countEl.textContent = ropeCount;
+  const pct = getSportPct();
+  const bar = document.getElementById('ropeProgressBar');
+  if(bar) bar.style.width = pct + '%';
   updateProgress();
 }
 function completeRope(){
   if(ropeDone) return;
-  ropeCount=1000; ropeDone=true; updateRope();
+  ropeCount = sportConfig.target; ropeDone = true; updateRope();
   showEncourage();
 }
 function showEncourage(){
   const msgs=[
-    {e:'🎉',t:'太棒啦！',d:'跳绳1000个目标完成！坚持运动，身体棒棒！'},
-    {e:'⭐',t:'你是跳绳小达人！',d:'1000个轻松拿下，为你点赞！'},
-    {e:'🏆',t:'冠军就是你！',d:'今日跳绳目标达成，获得1枚金币奖励！'}
+    {e:'🎉',t:'太棒啦！',d:`${sportConfig.name}${sportConfig.target}${sportConfig.unit}目标完成！坚持运动，身体棒棒！`},
+    {e:'⭐',t:`你是${sportConfig.name}小达人！`,d:`${sportConfig.target}${sportConfig.unit}轻松拿下，为你点赞！`},
+    {e:'🏆',t:'冠军就是你！',d:`今日${sportConfig.name}目标达成，获得1枚金币奖励！`}
   ];
   const m=msgs[Math.floor(Math.random()*msgs.length)];
   document.getElementById('encEmoji').textContent=m.e;
   document.getElementById('encTitle').textContent=m.t;
   document.getElementById('encDesc').textContent=m.d;
   openModal('encourageModal');
+}
+
+function openSportConfig(){
+  document.getElementById('sportCfgName').value = sportConfig.name;
+  document.getElementById('sportCfgUnit').value = sportConfig.unit;
+  document.getElementById('sportCfgTarget').value = sportConfig.target;
+  document.getElementById('sportCfgSteps').value = sportConfig.steps.join(',');
+  sportCfgEditing = {emoji: sportConfig.emoji, color: sportConfig.color};
+  renderSportEmojiPicker();
+  renderSportColorPicker();
+  openModal('sportCfgModal');
+}
+function renderSportEmojiPicker(){
+  const box = document.getElementById('sportEmojiPicker');
+  box.innerHTML = SPORT_EMOJIS.map(e=>
+    `<span class="${e===sportCfgEditing.emoji?'selected':''}" onclick="pickSportEmoji('${e}')">${e}</span>`
+  ).join('');
+}
+function pickSportEmoji(e){
+  sportCfgEditing.emoji = e;
+  renderSportEmojiPicker();
+}
+function renderSportColorPicker(){
+  const box = document.getElementById('sportColorPicker');
+  box.innerHTML = SPORT_COLORS.map(c=>
+    `<span class="${c===sportCfgEditing.color?'selected':''}" style="background:${c}" onclick="pickSportColor('${c}')"></span>`
+  ).join('');
+}
+function pickSportColor(c){
+  sportCfgEditing.color = c;
+  renderSportColorPicker();
+}
+function saveSportConfig(){
+  const name = document.getElementById('sportCfgName').value.trim() || '运动打卡';
+  const unit = document.getElementById('sportCfgUnit').value.trim() || '个';
+  const target = Math.max(1, parseInt(document.getElementById('sportCfgTarget').value) || 1000);
+  const stepsStr = document.getElementById('sportCfgSteps').value.trim();
+  let steps = stepsStr ? stepsStr.split(/[,，\s]+/).map(s=>parseInt(s)).filter(n=>n>0 && n<=target) : [100,200];
+  if(steps.length === 0) steps = [100];
+  // 如果目标变了，重置进度
+  if(target !== sportConfig.target){
+    ropeCount = 0;
+    ropeDone = false;
+  }
+  sportConfig = {
+    name, emoji: sportCfgEditing.emoji || '🤸', unit, target, steps,
+    color: sportCfgEditing.color || '#E89B4E'
+  };
+  renderSportUI();
+  renderNav();
+  updateRope();
+  save();
+  closeModal('sportCfgModal');
+  showToast('✅ 运动设置已保存');
 }
 
 // ===== 抓娃娃机 =====
@@ -1541,7 +1670,7 @@ async function syncToCloud(){
 
   const data = {
     tasks, navItems, coins, coinLog, rewardPool,
-    ropeCount, ropeDone, lastCoinEarned,
+    ropeCount, ropeDone, lastCoinEarned, sportConfig,
     title: localStorage.getItem('pcw_title') || 'Romeo成长空间站',
     quote: document.getElementById('quoteText')?.textContent || '',
     memo: document.querySelector('.memo-text')?.innerHTML || '',
@@ -1609,6 +1738,7 @@ async function pullFromCloud(){
     if(data.ropeCount !== undefined) ropeCount = data.ropeCount;
     if(data.ropeDone !== undefined) ropeDone = data.ropeDone;
     if(data.lastCoinEarned) lastCoinEarned = data.lastCoinEarned;
+    if(data.sportConfig) sportConfig = Object.assign(sportConfig, data.sportConfig);
     if(data.title){
       localStorage.setItem('pcw_title', data.title);
       const tEl = document.getElementById('workbenchTitle');
@@ -1675,6 +1805,7 @@ const dq=getDailyQuote();
 document.getElementById('quoteText').textContent=dq.text;
 document.getElementById('quoteTag').textContent=dq.tag;
 renderNav();
+renderSportUI();
 renderBalls();
 renderAll();
 loadNews();
