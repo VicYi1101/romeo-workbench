@@ -328,6 +328,21 @@
   .coin-log .log-item .log-amt{ font-weight:700; font-size:13px;}
   .coin-log .log-item .log-amt.plus{ color:var(--green-d);}
   .coin-log .log-item .log-amt.minus{ color:var(--red);}
+  .manual-coin-area{ background:#FFF8E7; border:1px solid #F5D980; border-radius:10px; padding:8px 10px; margin-bottom:8px;}
+  .btn-manual{ flex:1; border:none; border-radius:10px; padding:7px 0; font-size:11px; font-weight:600; cursor:pointer;}
+  .btn-manual.add{ background:var(--green-d); color:#fff;}
+  .btn-manual.sub{ background:#E26A6A; color:#fff;}
+  .btn-manual:active{ transform:scale(.96);}
+  /* 历史记录列表 */
+  .hist-day{ background:#FFFCF5; border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:8px;}
+  .hist-day .hd{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;}
+  .hist-day .hd .date{ font-size:13px; font-weight:700; color:var(--text);}
+  .hist-day .hd .summary{ font-size:10px; color:var(--sub);}
+  .hist-day .tasks{ font-size:11px; color:var(--text); line-height:1.6;}
+  .hist-day .tasks .done{ color:var(--green-d);}
+  .hist-day .tasks .undone{ color:var(--sub); text-decoration:line-through;}
+  .hist-day .sport{ font-size:10px; color:var(--orange-d); margin-top:4px;}
+  .hist-empty{ text-align:center; color:var(--soft); padding:30px 10px; font-size:12px;}
 
   .home-indicator{ height:max(20px, env(safe-area-inset-bottom)); display:flex; align-items:center; justify-content:center; padding-bottom:env(safe-area-inset-bottom);}
 
@@ -552,7 +567,7 @@
           <button onclick="setCycle('monthly',this)">每月</button>
         </div>
         <div class="cycle-info" id="cycleInfo">
-          完成每日目标获得1金币 · <span class="reward-edit" onclick="openRewardEdit()">编辑奖励池</span>
+          完成每日目标获得1金币 · <span class="reward-edit" onclick="openRewardEdit()">编辑奖励池</span> · <span class="reward-edit" onclick="openHistory()">📅 历史记录</span>
         </div>
         <div class="machine" id="machine">
           <div class="top-bar-m"></div>
@@ -672,8 +687,32 @@
       <span>累计获得：<b style="color:var(--green-d);" id="logTotal">0</b> 枚</span>
       <span>已消费：<b style="color:var(--red);" id="logSpent">0</b> 枚</span>
     </div>
+    <!-- 手动奖励区 -->
+    <div class="manual-coin-area">
+      <div style="font-size:11px;color:var(--sub);margin-bottom:6px;">手动奖励 / 扣除</div>
+      <div style="display:flex;gap:6px;margin-bottom:6px;">
+        <input type="number" id="manualCoinAmt" value="1" min="1" max="99" style="width:50px;border:1.5px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12px;text-align:center;background:#FFFCF5;">
+        <input type="text" id="manualCoinReason" placeholder="奖励原因（如：表现好/主动读书）" style="flex:1;border:1.5px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12px;background:#FFFCF5;">
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn-manual add" onclick="manualCoin('earn')">＋ 奖励金币</button>
+        <button class="btn-manual sub" onclick="manualCoin('spend')">－ 扣除金币</button>
+      </div>
+    </div>
     <div class="log-list" id="logList"></div>
     <button class="btn-ok" onclick="closeModal('coinLogModal')" style="width:100%;">关闭</button>
+  </div>
+</div>
+<!-- 手动奖励后的快速输入历史 -->
+<!-- 历史完成记录弹窗 -->
+<div class="modal-mask" id="historyModal">
+  <div class="modal edit-modal" style="width:310px;text-align:left;">
+    <div class="title" style="text-align:center;">📅 历史完成记录</div>
+    <div id="historyContent" style="max-height:360px;overflow-y:auto;"></div>
+    <div class="row" style="margin-top:14px;">
+      <button class="btn-c btn-cancel" onclick="closeModal('historyModal')">关闭</button>
+      <button class="btn-c btn-save" onclick="saveTodaySnapshot()" style="background:var(--blue-d);">📷 保存今日快照</button>
+    </div>
   </div>
 </div>
 <!-- 运动打卡设置弹窗 -->
@@ -701,7 +740,7 @@
 
 <script>
 // ===== 持久化存储 =====
-function save(){ localStorage.setItem('pcw_data', JSON.stringify({tasks, navItems, coins, coinLog, rewardPool, ropeCount, ropeDone, lastCoinEarned, sportConfig})); autoSync(); }
+function save(){ localStorage.setItem('pcw_data', JSON.stringify({tasks, navItems, coins, coinLog, rewardPool, ropeCount, ropeDone, lastCoinEarned, sportConfig, history, lastSnapshotDate})); autoSync(); }
 function load(){
   try{
     const d = JSON.parse(localStorage.getItem('pcw_data'));
@@ -715,6 +754,8 @@ function load(){
       if(d.ropeDone !== undefined) ropeDone = d.ropeDone;
       if(d.lastCoinEarned) lastCoinEarned = d.lastCoinEarned;
       if(d.sportConfig) sportConfig = Object.assign(sportConfig, d.sportConfig);
+      if(d.history) history = d.history;
+      if(d.lastSnapshotDate) lastSnapshotDate = d.lastSnapshotDate;
     }
   }catch(e){}
 }
@@ -769,6 +810,9 @@ let sportConfig = {
   steps: [100, 200],
   color: '#E89B4E'
 };
+// 历史完成记录：每天一个快照
+let history = [];
+let lastSnapshotDate = ''; // 上次自动保存快照的日期，用于判断是否需要归档
 let editing = {cat:'', id:0};
 let coins = 0;
 let coinLog = [];
@@ -1123,6 +1167,28 @@ function addCoin(reason, cycle){
   showCoinFly();
   save();
 }
+// 手动奖励/扣除金币（可自定义数量）
+function manualCoin(type){
+  const amt = Math.max(1, parseInt(document.getElementById('manualCoinAmt').value) || 1);
+  const reason = document.getElementById('manualCoinReason').value.trim() || (type==='earn'?'手动奖励':'手动扣除');
+  if(type==='earn'){
+    coins += amt;
+    coinLog.unshift({type:'earn', amount:amt, reason, cycle:'manual', time:new Date().toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})});
+    for(let i=0;i<Math.min(amt,5);i++) setTimeout(showCoinFly, i*150);
+  } else {
+    if(coins < amt){
+      showToast('❌ 金币不足，当前只有 ' + coins + ' 枚');
+      return;
+    }
+    coins -= amt;
+    coinLog.unshift({type:'spend', amount:amt, reason, cycle:'manual', time:new Date().toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})});
+  }
+  document.getElementById('coinCount').textContent=coins;
+  document.getElementById('manualCoinReason').value='';
+  save();
+  openCoinLog(); // 刷新记录列表
+  showToast((type==='earn'?'✅ 已奖励 ':'✅ 已扣除 ')+amt+' 枚金币');
+}
 function spendCoin(reason){
   if(coins<=0) return false;
   coins--;
@@ -1146,15 +1212,97 @@ function openCoinLog(){
   const list=document.getElementById('logList');
   if(coinLog.length===0){ list.innerHTML='<div style="text-align:center;color:var(--soft);padding:20px;font-size:11px;">暂无记录</div>'; }
   else{
+    const cycleMap={daily:'每日',weekly:'每周',monthly:'每月',manual:'手动'};
     list.innerHTML=coinLog.map(l=>`
       <div class="log-item">
         <span class="log-icon">${l.type==='earn'?'🪙':'🎮'}</span>
-        <span class="log-desc">${l.reason}<small>${l.time} · ${l.cycle==='daily'?'每日':l.cycle==='weekly'?'每周':'每月'}</small></span>
+        <span class="log-desc">${l.reason}<small>${l.time} · ${cycleMap[l.cycle]||l.cycle}</small></span>
         <span class="log-amt ${l.type==='earn'?'plus':'minus'}">${l.type==='earn'?'+':'-'}${l.amount}</span>
       </div>
     `).join('');
   }
   openModal('coinLogModal');
+}
+
+// ===== 历史完成记录 =====
+// 获取今天日期字符串
+function todayStr(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+// 保存当日快照（归档当前任务完成状态）
+function saveTodaySnapshot(silent){
+  const today = todayStr();
+  // 收集所有已完成任务
+  const completed = [];
+  const cats = ['math','chinese','english','outside','reading','todo'];
+  const catNames = {math:'数学',chinese:'语文',english:'英语',outside:'校外',reading:'阅读',todo:'待办'};
+  cats.forEach(c=>{
+    (tasks[c]||[]).forEach(t=>{
+      if(t.done) completed.push({cat:c, catName:catNames[c], name:t.name, tag:t.tag||''});
+    });
+  });
+  const totalTasks = cats.reduce((s,c)=>s+(tasks[c]||[]).length,0);
+  const snapshot = {
+    date: today,
+    weekday: ['日','一','二','三','四','五','六'][new Date().getDay()],
+    completedTasks: completed,
+    totalDone: completed.length,
+    totalTasks: totalTasks,
+    sportName: sportConfig.name,
+    sportCount: ropeCount,
+    sportTarget: sportConfig.target,
+    sportDone: ropeDone,
+    coins: coins,
+    savedAt: new Date().toLocaleString('zh-CN',{hour:'2-digit',minute:'2-digit'})
+  };
+  // 如果今天已有快照，更新它；否则新增
+  const idx = history.findIndex(h=>h.date===today);
+  if(idx>=0) history[idx] = snapshot;
+  else { history.unshift(snapshot); if(history.length>90) history=history.slice(0,90); }
+  lastSnapshotDate = today;
+  save();
+  if(!silent) showToast('✅ 今日快照已保存');
+}
+// 页面加载时自动归档（如果跨天了）
+function autoSnapshot(){
+  const today = todayStr();
+  if(lastSnapshotDate && lastSnapshotDate !== today){
+    // 跨天了，把昨天的数据归档（如果还没归档）
+    saveTodaySnapshot(true);
+    // 新的一天，重置每日进度（可选——这里只归档不重置，让用户手动重置）
+  } else if(!lastSnapshotDate){
+    // 首次使用，记录今天
+    lastSnapshotDate = today;
+    save();
+  }
+}
+// 打开历史记录弹窗
+function openHistory(){
+  const box = document.getElementById('historyContent');
+  if(history.length===0){
+    box.innerHTML = '<div class="hist-empty">📅 还没有历史记录<br><br>点击下方"保存今日快照"即可记录今天的完成情况<br>系统也会每天自动归档</div>';
+  } else {
+    box.innerHTML = history.map(h=>{
+      const taskList = h.completedTasks.length > 0
+        ? h.completedTasks.map(t=>`<div class="done">✓ ${t.catName}：${t.name}${t.tag?' <small style="color:#C9A647;">['+t.tag+']</small>':''}</div>`).join('')
+        : '<div class="undone">（当天没有完成的任务）</div>';
+      const sportInfo = h.sportDone
+        ? `<div class="sport">🤸 ${h.sportName}：${h.sportCount}/${h.sportTarget} ✓ 已完成</div>`
+        : `<div class="sport" style="color:var(--sub);">🤸 ${h.sportName}：${h.sportCount}/${h.sportTarget} 未完成</div>`;
+      return `
+        <div class="hist-day">
+          <div class="hd">
+            <span class="date">${h.date} 周${h.weekday}</span>
+            <span class="summary">完成 ${h.totalDone}/${h.totalTasks} 项 · ${h.coins}🪙 · ${h.savedAt}</span>
+          </div>
+          <div class="tasks">${taskList}</div>
+          ${sportInfo}
+        </div>
+      `;
+    }).join('');
+  }
+  openModal('historyModal');
 }
 
 // 校内折叠
@@ -1670,7 +1818,7 @@ async function syncToCloud(){
 
   const data = {
     tasks, navItems, coins, coinLog, rewardPool,
-    ropeCount, ropeDone, lastCoinEarned, sportConfig,
+    ropeCount, ropeDone, lastCoinEarned, sportConfig, history, lastSnapshotDate,
     title: localStorage.getItem('pcw_title') || 'Romeo成长空间站',
     quote: document.getElementById('quoteText')?.textContent || '',
     memo: document.querySelector('.memo-text')?.innerHTML || '',
@@ -1739,6 +1887,8 @@ async function pullFromCloud(){
     if(data.ropeDone !== undefined) ropeDone = data.ropeDone;
     if(data.lastCoinEarned) lastCoinEarned = data.lastCoinEarned;
     if(data.sportConfig) sportConfig = Object.assign(sportConfig, data.sportConfig);
+    if(data.history) history = data.history;
+    if(data.lastSnapshotDate) lastSnapshotDate = data.lastSnapshotDate;
     if(data.title){
       localStorage.setItem('pcw_title', data.title);
       const tEl = document.getElementById('workbenchTitle');
@@ -1809,6 +1959,7 @@ renderSportUI();
 renderBalls();
 renderAll();
 loadNews();
+autoSnapshot(); // 启动时检查是否需要跨天归档
 // 启动时尝试从云端拉取（静默，失败不提示）
 initCloudSync();
 </script>
